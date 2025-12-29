@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick - vs Transparent Fish</title>
+<title>Cosmic Lipstick - Glitter Fever</title>
 <style>
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; }
     canvas { display: block; }
@@ -12,17 +12,21 @@
         color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
         border: 10px double #FF00FF; z-index: 100;
     }
-    button { 
-        padding: 10px 20px; font-size: 20px; background: #FF00FF; color: white; 
-        border: none; cursor: pointer; font-weight: bold;
+    #feverMode {
+        display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+        color: #FF00FF; font-size: 40px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
+        animation: blink 0.2s infinite; z-index: 50;
     }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    button { padding: 10px 20px; font-size: 20px; background: #FF00FF; color: white; border: none; cursor: pointer; font-weight: bold; }
     .show-cursor { cursor: auto !important; }
 </style>
 </head>
 <body id="mainBody">
+<div id="feverMode">✨ GLITTER FEVER ✨</div>
 <div id="gameOver">
     <h1>💀 DRY & DEAD 💀</h1>
-    <p>宇宙魚のキモさに負けました...</p>
+    <p>もっとキラキラが必要...</p>
     <button onclick="location.reload()">RETRY</button>
 </div>
 <canvas id="gameCanvas"></canvas>
@@ -31,14 +35,14 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const body = document.getElementById('mainBody');
+const feverUI = document.getElementById('feverMode');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- 画像の読み込み (新しいファイル名に修正) ---
 const enemyImg = new Image();
 enemyImg.src = 'unnamed__1_-removebg-preview.png'; 
 
-let player = { x: 100, y: canvas.height / 2, width: 70, height: 35, colorBody: '#FF69B4', colorTip: '#FF1493' };
+let player = { x: 100, y: canvas.height / 2, width: 80, height: 40 };
 let mouseY = canvas.height / 2;
 let bullets = [];
 let paintTrails = [];
@@ -46,25 +50,29 @@ let stars = [];
 let enemies = [];
 let score = 0;
 let isGameOver = false;
+let isFever = false;
+let feverTimer = 0;
+let lastFeverScore = 0;
 
-// 星の生成
 for (let i = 0; i < 150; i++) {
     stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05 });
 }
 
 window.addEventListener('mousemove', (e) => { if(!isGameOver) mouseY = e.clientY; });
 window.addEventListener('mousedown', () => {
-    if(!isGameOver) bullets.push({ x: player.x + player.width/2, y: player.y, speed: 15, size: 35, life: 50 });
+    if(!isGameOver && !isFever) fireGlitter();
 });
+
+function fireGlitter() {
+    bullets.push({ x: player.x + 30, y: player.y, speed: 18, size: 25, life: 60, particles: [] });
+}
 
 function spawnEnemy() {
     if (Math.random() < 0.03) {
         enemies.push({
             x: canvas.width + 100, y: Math.random() * canvas.height,
             width: 120, height: 120, speed: 2.5 + Math.random() * 4,
-            status: 'normal',
-            timer: 0,
-            wiggle: Math.random() * Math.PI 
+            status: 'normal', timer: 0, wiggle: Math.random() * Math.PI 
         });
     }
 }
@@ -81,13 +89,13 @@ function drawStars() {
 }
 
 function drawPaintedArea(time) {
-    if (paintTrails.length === 0) return;
     ctx.save();
     ctx.beginPath();
     paintTrails.forEach(p => { ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); });
     ctx.clip();
     const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
-    gradient.addColorStop(0, `hsl(320, 100%, ${Math.sin(time * 0.05) * 20 + 50}%)`);
+    const hue = isFever ? 320 : 300;
+    gradient.addColorStop(0, `hsl(${hue}, 100%, ${Math.sin(time * 0.05) * 20 + 60}%)`);
     gradient.addColorStop(1, '#110011');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -97,32 +105,19 @@ function drawPaintedArea(time) {
 function drawFish(e) {
     ctx.save();
     ctx.translate(e.x, e.y);
-    // 魚を上下にゆらゆらさせる
     const wiggleY = Math.sin(Date.now() * 0.008 + e.wiggle) * 15;
     ctx.translate(0, wiggleY);
-    
     if (e.status === 'normal') {
-        // --- 背景透過したキモカワ魚 ---
-        if (enemyImg.complete) {
-            // 画像を中心に描画
-            ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
-        } else {
-            // 画像読み込み中
-            ctx.fillStyle = "rgba(100, 100, 100, 0.5)";
-            ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
-        }
+        if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
-        // --- 浄化（ギャル魚） ---
-        ctx.shadowBlur = 30; ctx.shadowColor = "#FF00FF";
+        ctx.shadowBlur = 40; ctx.shadowColor = "#FF00FF";
         ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, 65, 45, 0, 0, Math.PI * 2); ctx.fill();
-        // リボン
+        ctx.beginPath(); ctx.ellipse(0, 0, 70, 50, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#FF00FF";
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(30, -65); ctx.lineTo(30, 0); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(-30, -65); ctx.lineTo(-30, 0); ctx.fill();
-        // ぷるぷる唇
-        ctx.fillStyle = "#FF1493";
-        ctx.beginPath(); ctx.ellipse(-45, 15, 25, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(35, -70); ctx.lineTo(35, 5); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(-35, -70); ctx.lineTo(-35, 5); ctx.fill();
+        ctx.fillStyle = "#FF1493"; // リップ
+        ctx.beginPath(); ctx.ellipse(-50, 20, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -132,25 +127,21 @@ function updateEnemies() {
         let e = enemies[i];
         if (e.status === 'normal') {
             e.x -= e.speed;
-            // 弾との当たり判定
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 65) {
+                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) {
                     e.status = 'purified';
                     score += 10;
-                    paintTrails.push({ x: e.x, y: e.y, radius: 200 });
+                    paintTrails.push({ x: e.x, y: e.y, radius: 250 });
                 }
             });
-            // プレイヤー（リップ）との当たり判定
             if (Math.hypot(player.x - e.x, player.y - e.y) < 60) {
                 isGameOver = true;
                 body.classList.add('show-cursor');
                 document.getElementById('gameOver').style.display = 'block';
             }
         } else {
-            // 浄化されたら上に飛んでいく
-            e.x += 18; e.y -= 18;
-            e.timer++;
-            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 45 });
+            e.x += 20; e.y -= 20; e.timer++;
+            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 50 });
         }
         drawFish(e);
         if (e.x < -300 || e.y < -300 || e.x > canvas.width + 500) enemies.splice(i, 1);
@@ -160,17 +151,18 @@ function updateEnemies() {
 function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
-        b.x += b.speed;
-        b.life--;
-        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
-
+        b.x += b.speed; b.life--;
+        // ラメ粒子を描画
         ctx.save();
-        ctx.globalAlpha = b.life / 50;
-        ctx.shadowBlur = 20; ctx.shadowColor = '#FF00FF';
-        ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
-        ctx.beginPath(); ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 15; ctx.shadowColor = '#FFB6C1';
+        for(let j=0; j<5; j++) {
+            ctx.fillStyle = j % 2 === 0 ? '#FF69B4' : '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30, Math.random()*4, 0, Math.PI*2);
+            ctx.fill();
+        }
         ctx.restore();
-
+        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
         if (b.life <= 0 || b.x > canvas.width + 50) bullets.splice(i, 1);
     }
 }
@@ -178,11 +170,25 @@ function updateBullets() {
 function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.shadowBlur = 30; ctx.shadowColor = player.colorBody;
-    ctx.fillStyle = player.colorBody;
-    ctx.beginPath(); ctx.roundRect(-player.width/2, -player.height/2, player.width*0.7, player.height, [5, 0, 0, 5]); ctx.fill();
-    ctx.fillStyle = player.colorTip;
-    ctx.beginPath(); ctx.moveTo(player.width*0.2, -player.height/2 + 5); ctx.lineTo(player.width/2, -player.height/4); ctx.lineTo(player.width/2, player.height/4); ctx.lineTo(player.width*0.2, player.height/2 - 5); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 30; ctx.shadowColor = '#FF69B4';
+    
+    // リップの本体 (可愛くデザイン)
+    ctx.fillStyle = '#FF69B4';
+    ctx.beginPath(); ctx.roundRect(-40, -20, 60, 40, [10, 0, 0, 10]); ctx.fill();
+    
+    // ゴールドのライン
+    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3;
+    ctx.strokeRect(-10, -20, 5, 40);
+    
+    // リップの先端 (斜めカット)
+    ctx.fillStyle = '#FF1493';
+    ctx.beginPath(); ctx.moveTo(20, -18); ctx.lineTo(50, -10); ctx.lineTo(50, 10); ctx.lineTo(20, 18); ctx.closePath(); ctx.fill();
+
+    // ハートのチャーム
+    ctx.fillStyle = '#FF00FF';
+    ctx.font = '20px Arial';
+    ctx.fillText('❤︎', -30, 5);
+
     ctx.restore();
 }
 
@@ -190,6 +196,24 @@ function gameLoop() {
     if (isGameOver) return;
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // ボーナスタイムのチェック (100ptごと)
+    if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
+        isFever = true;
+        feverTimer = 300; // 5秒間
+        lastFeverScore = score;
+        feverUI.style.display = 'block';
+    }
+
+    if (isFever) {
+        feverTimer--;
+        if (feverTimer % 5 === 0) fireGlitter(); // 超速連射
+        if (feverTimer <= 0) {
+            isFever = false;
+            feverUI.style.display = 'none';
+        }
+    }
+
     drawStars();
     drawPaintedArea(Date.now() / 20);
     spawnEnemy();
@@ -197,6 +221,7 @@ function gameLoop() {
     player.y += (mouseY - player.y) * 0.1;
     updateBullets();
     drawPlayer();
+    
     ctx.fillStyle = "#FF00FF"; ctx.font = "bold 28px Arial";
     ctx.fillText(`PURIFIED: ${score}`, 20, 50);
     requestAnimationFrame(gameLoop);

@@ -256,3 +256,77 @@ gameLoop();
 </script>
 </body>
 </html>
+
+// --- スケーリングの設定 ---
+let gameScale = 1;
+const VIRTUAL_WIDTH = 800; // 仮想的な横幅（これを基準にすると魚が遠くから来る）
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // スマホの横幅に合わせて倍率を計算
+    gameScale = canvas.width / VIRTUAL_WIDTH;
+    
+    // プレイヤーの初期位置を調整
+    player.x = 80 * gameScale;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// --- 描画関数をスケーリング対応に修正 ---
+function gameLoop() {
+    if (isGameOver) return;
+
+    // 画面をクリアして、全体にスケーリングをかける
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // リセット
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // ここから下の描画に gameScale を適用する
+    ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
+
+    // --- ボーナスタイム等のロジック (変更なし) ---
+    if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
+        isFever = true;
+        feverTimer = 300;
+        lastFeverScore = score;
+        feverUI.style.display = 'block';
+    }
+    if (isFever) {
+        feverTimer--;
+        if (feverTimer % 5 === 0) fireGlitter();
+        if (feverTimer <= 0) { isFever = false; feverUI.style.display = 'none'; }
+    }
+
+    drawStars();
+    drawPaintedArea(Date.now() / 20);
+    spawnEnemy();
+    updateEnemies();
+    
+    // マウス/タッチ位置もスケーリングに合わせて計算
+    const targetYInGame = targetY / gameScale;
+    player.y += (targetYInGame - player.y) * 0.2;
+
+    updateBullets();
+    drawPlayer();
+    
+    // スコアだけは画面の端っこ（スケーリング外）に描画
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+    ctx.fillStyle = "#FF00FF"; ctx.font = "bold 28px Arial";
+    ctx.fillText(`PURIFIED: ${score}`, 20, 50);
+    
+    requestAnimationFrame(gameLoop);
+}
+
+// 敵の出現位置も VIRTUAL_WIDTH に合わせる
+function spawnEnemy() {
+    if (Math.random() < 0.03) {
+        enemies.push({
+            x: VIRTUAL_WIDTH + 100, // 画面外の右側
+            y: Math.random() * (canvas.height / gameScale),
+            width: 120, height: 120, speed: 2.5 + Math.random() * 4,
+            status: 'normal', timer: 0, wiggle: Math.random() * Math.PI 
+        });
+    }
+}

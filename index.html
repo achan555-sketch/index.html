@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick - Final Phase</title>
+<title>Cosmic Lipstick - Phase 4</title>
 <style>
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; }
     canvas { display: block; }
@@ -18,32 +18,42 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- プレイヤー & 弾 ---
+// --- ゲームデータ ---
 let player = { x: 100, y: canvas.height / 2, width: 60, height: 30, colorBody: '#FF69B4', colorTip: '#FF1493' };
 let mouseY = canvas.height / 2;
 let bullets = [];
-
-// --- 🎨 塗り替えシステム (Phase 3 追加) ---
-let paintTrails = []; // 塗られた場所の座標を保存する配列
-
-// --- 🌟 星空の設定 ---
+let paintTrails = [];
 let stars = [];
+let enemies = []; // 敵を入れる配列
+let score = 0;
+
+// 星空の初期化
 for (let i = 0; i < 150; i++) {
-    stars.push({
-        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-        size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05
-    });
+    stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05 });
 }
 
 // --- イベントリスナー ---
 window.addEventListener('mousemove', (e) => { mouseY = e.clientY; });
 window.addEventListener('mousedown', () => {
-    bullets.push({ x: player.x + player.width/2, y: player.y, speed: 20, size: 30 });
+    bullets.push({ x: player.x + player.width/2, y: player.y, speed: 20, size: 25 });
 });
 
-// --- 描画関数 ---
+// --- 敵の生成ロジック (Phase 4 追加) ---
+function spawnEnemy() {
+    if (Math.random() < 0.02) { // 約2%の確率で毎フレーム生成
+        enemies.push({
+            x: canvas.width + 100,
+            y: Math.random() * canvas.height,
+            width: 50,
+            height: 30,
+            speed: 3 + Math.random() * 5,
+            hp: 1
+        });
+    }
+}
 
-// 1. モノクロの星空を描く
+// --- 描画と更新 ---
+
 function drawStars() {
     ctx.fillStyle = "white";
     stars.forEach(s => {
@@ -55,32 +65,71 @@ function drawStars() {
     ctx.globalAlpha = 1.0;
 }
 
-// 2. 塗られたピンクの場所を描く (ここが魔法！)
 function drawPaintedArea(time) {
     if (paintTrails.length === 0) return;
-
     ctx.save();
-    
-    // クリッピング：これ以降の描画は、ここで指定した円の中にしか表示されない
     ctx.beginPath();
-    paintTrails.forEach(p => {
-        ctx.moveTo(p.x, p.y);
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    });
+    paintTrails.forEach(p => { ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); });
     ctx.clip();
-
-    // --- この中だけ「ネオンピンクの世界（Phase 0.1）」を再現 ---
     const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
     const intensity = Math.sin(time * 0.05) * 20 + 40;
     gradient.addColorStop(0, `hsl(300, 100%, ${intensity}%)`);
     gradient.addColorStop(1, '#220022');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 塗りつぶした場所のフチを少し光らせる
-    ctx.shadowBlur = 15; ctx.shadowColor = "#FF00FF";
-    
     ctx.restore();
+}
+
+function updateEnemies() {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i];
+        e.x -= e.speed; // 左へ進む
+
+        // --- 当たり判定 (弾 vs 敵) ---
+        bullets.forEach((b, bi) => {
+            // 弾と敵の距離を計算（円と四角の簡易判定）
+            if (b.x > e.x && b.x < e.x + e.width && b.y > e.y - e.height/2 && b.y < e.y + e.height/2) {
+                e.hp -= 1;
+                // 当たった場所もピンクに染める！
+                paintTrails.push({ x: e.x + e.width/2, y: e.y, radius: 80 }); 
+            }
+        });
+
+        if (e.hp <= 0) {
+            enemies.splice(i, 1);
+            score += 10;
+            continue;
+        }
+
+        // 敵の描画 (死んだ魚風のグレーの影)
+        ctx.save();
+        ctx.fillStyle = "#555"; // グレー
+        ctx.beginPath();
+        ctx.ellipse(e.x + e.width/2, e.y, e.width/2, e.height/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // 魚の尾びれっぽいやつ
+        ctx.beginPath();
+        ctx.moveTo(e.x + e.width, e.y);
+        ctx.lineTo(e.x + e.width + 15, e.y - 10);
+        ctx.lineTo(e.x + e.width + 15, e.y + 10);
+        ctx.fill();
+        ctx.restore();
+
+        if (e.x < -100) enemies.splice(i, 1);
+    }
+}
+
+function updateBullets() {
+    bullets.forEach((b) => {
+        b.x += b.speed;
+        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
+        ctx.save();
+        ctx.shadowBlur = 15; ctx.shadowColor = '#FF00FF';
+        ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
+        ctx.beginPath(); ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    });
+    bullets = bullets.filter(b => b.x < canvas.width + 50);
 }
 
 function drawPlayer() {
@@ -94,39 +143,30 @@ function drawPlayer() {
     ctx.restore();
 }
 
-function updateBullets() {
-    bullets.forEach((b, i) => {
-        b.x += b.speed;
-        // 弾が通った場所に「塗られたポイント」を追加
-        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
-        
-        ctx.save();
-        ctx.shadowBlur = 15; ctx.shadowColor = '#FF00FF';
-        ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
-        ctx.beginPath(); ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-    });
-    bullets = bullets.filter(b => b.x < canvas.width + 50);
-}
-
 // --- メインループ ---
 let frameTime = 0;
 function gameLoop() {
     frameTime++;
-    // 背景（モノクロ）
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    drawStars();                // 1. 普通の星空を描く
-    drawPaintedArea(frameTime); // 2. 塗られた場所だけネオンにする (魔法！)
+    drawStars();
+    drawPaintedArea(frameTime);
+    
+    spawnEnemy();    // 敵を出す
+    updateEnemies(); // 敵を動かして当たり判定
     
     player.y += (mouseY - player.y) * 0.1;
-    updateBullets();            // 3. 弾を動かし、軌跡を記録
-    drawPlayer();               // 4. 自機
-    
+    updateBullets();
+    drawPlayer();
+
+    // スコア表示
+    ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
+    ctx.fillText(`PURIFIED: ${score}`, 20, 40);
+
     requestAnimationFrame(gameLoop);
 }
-
 gameLoop();
 </script>
 </body>

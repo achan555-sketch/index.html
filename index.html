@@ -3,31 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Cosmic Lipstick - Thrill Ver.</title>
+<title>Cosmic Lipstick - Kawaii Glitter</title>
 <style>
-    body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; touch-action: none; }
+    body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; touch-action: none; }
     canvas { display: block; }
+    
+    /* 女子力高めなゲームオーバー画面 */
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
-        border: 10px double #FF00FF; z-index: 100; width: 80%; box-sizing: border-box;
+        color: #FF69B4; text-align: center; background: rgba(0,0,0,0.95); padding: 40px; 
+        border: 5px solid #FF69B4; border-radius: 20px; z-index: 100; width: 85%; box-sizing: border-box;
+        box-shadow: 0 0 30px rgba(255, 105, 180, 0.5);
     }
+    #gameOver h1 { font-size: 28px; margin-bottom: 10px; }
+    #gameOver p { font-size: 18px; margin-bottom: 20px; color: #fff; }
+
     #feverMode {
         display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
         color: #FF00FF; font-size: 32px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
         animation: blink 0.2s infinite; z-index: 50; white-space: nowrap;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-    button { padding: 12px 24px; font-size: 20px; background: #FF00FF; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+    
+    button { padding: 12px 30px; font-size: 18px; background: linear-gradient(to bottom, #FF69B4, #FF1493); color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 </style>
 </head>
 <body id="mainBody">
 
-<div id="feverMode">✨ GLITTER FEVER ✨</div>
+<div id="feverMode">✨ KAWAII FEVER ✨</div>
 <div id="gameOver">
-    <h1>💀 DRY & DEAD 💀</h1>
-    <p>バケモノに侵入された！</p>
-    <button onclick="location.reload()">RETRY</button>
+    <h1>💀 女子力不足 💀</h1>
+    <p id="deathMessage">カサカサだよ...<br>もっと潤いチャージして出直して❤︎</p>
+    <button onclick="location.reload()">RETRY ✨</button>
 </div>
 <canvas id="gameCanvas"></canvas>
 
@@ -56,28 +63,31 @@ let isFever = false;
 let feverTimer = 0;
 let lastFeverScore = 0;
 
+// 女子っぽいセリフ集
+const girlMessages = [
+    "カサカサだよ...<br>もっと潤いチャージして出直して❤︎",
+    "可愛さが足りないよ？<br>バケモノに負けるなんてありえない！",
+    "お肌も宇宙も乾燥中...<br>ラメが全然足りてないわ✨",
+    "女子力不足でゲームオーバー❤︎<br>次はもっとキラキラさせて？",
+    "ちょっと！ケアを怠りすぎじゃない？<br>バケモノが入ってきちゃったじゃん！"
+];
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     isPortrait = canvas.height > canvas.width; 
-    
     if (isPortrait) {
-        gameScale = canvas.width / 450; 
-        player.x = 225; 
-        player.y = (canvas.height / gameScale) - 100;
+        gameScale = canvas.width / 450; player.x = 225; player.y = (canvas.height / gameScale) - 100;
     } else {
-        gameScale = canvas.width / VIRTUAL_WIDTH;
-        player.x = 100;
-        player.y = (canvas.height / gameScale) / 2;
+        gameScale = canvas.width / VIRTUAL_WIDTH; player.x = 100; player.y = (canvas.height / gameScale) / 2;
     }
-    targetPos.x = player.x;
-    targetPos.y = player.y;
+    targetPos.x = player.x; targetPos.y = player.y;
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 for (let i = 0; i < 120; i++) {
-    stars.push({ x: Math.random() * 1000, y: Math.random() * 1500, size: Math.random() * 2, opacity: Math.random() });
+    stars.push({ x: Math.random() * 1000, y: Math.random() * 1500, size: Math.random() * 1.5, opacity: Math.random() });
 }
 
 const updateTarget = (x, y) => {
@@ -86,7 +96,6 @@ const updateTarget = (x, y) => {
 
 window.addEventListener('mousemove', (e) => { if(!isGameOver) updateTarget(e.clientX, e.clientY); });
 window.addEventListener('mousedown', (e) => { if(!isGameOver && !isFever) fireGlitter(); });
-
 canvas.addEventListener('touchstart', (e) => {
     if(!isGameOver) {
         updateTarget(e.touches[0].clientX, e.touches[0].clientY);
@@ -94,28 +103,20 @@ canvas.addEventListener('touchstart', (e) => {
     }
     e.preventDefault();
 }, { passive: false });
-
 canvas.addEventListener('touchmove', (e) => {
     if(!isGameOver) updateTarget(e.touches[0].clientX, e.touches[0].clientY);
     e.preventDefault();
 }, { passive: false });
 
 function fireGlitter() {
-    bullets.push({
-        x: player.x, y: player.y,
-        vx: isPortrait ? 0 : 20, vy: isPortrait ? -20 : 0,
-        size: 30, life: 50
-    });
+    bullets.push({ x: player.x, y: player.y, vx: isPortrait ? 0 : 20, vy: isPortrait ? -20 : 0, size: 30, life: 50 });
 }
 
 function spawnEnemy() {
     if (Math.random() < 0.04) {
         let ex, ey;
-        if (isPortrait) {
-            ex = Math.random() * (canvas.width / gameScale); ey = -100; 
-        } else {
-            ex = VIRTUAL_WIDTH + 100; ey = Math.random() * (canvas.height / gameScale);
-        }
+        if (isPortrait) { ex = Math.random() * (canvas.width / gameScale); ey = -100; }
+        else { ex = VIRTUAL_WIDTH + 100; ey = Math.random() * (canvas.height / gameScale); }
         enemies.push({ x: ex, y: ey, width: 110, height: 110, speed: 3 + Math.random() * 4, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
     }
 }
@@ -125,7 +126,6 @@ function drawFish(e) {
     ctx.translate(e.x, e.y);
     const wiggle = Math.sin(Date.now() * 0.008 + e.wiggle) * 15;
     if (isPortrait) ctx.translate(wiggle, 0); else ctx.translate(0, wiggle);
-    
     if (e.status === 'normal') {
         if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
@@ -144,28 +144,20 @@ function updateEnemies() {
         if (e.status === 'normal') {
             if (isPortrait) e.y += e.speed; else e.x -= e.speed;
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) {
-                    e.status = 'purified'; score += 10;
-                }
+                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) { e.status = 'purified'; score += 10; }
             });
             
-            // --- 新しいゲームオーバー判定 ---
-            // 1. 接触したか？
             const isCollided = Math.hypot(player.x - e.x, player.y - e.y) < 60;
-            // 2. PC版(横): リップより左に行ったか？
             const isPassedPC = !isPortrait && e.x < player.x - 40;
-            // 3. スマホ版(縦): リップより下に行ったか？
             const isPassedMobile = isPortrait && e.y > player.y + 40;
 
             if (isCollided || isPassedPC || isPassedMobile) {
                 isGameOver = true; 
+                document.getElementById('deathMessage').innerHTML = girlMessages[Math.floor(Math.random() * girlMessages.length)];
                 document.getElementById('gameOver').style.display = 'block';
             }
-        } else {
-            e.y -= 20; e.x += 20;
-        }
+        } else { e.y -= 20; e.x += 20; }
         drawFish(e);
-        // 画面外判定も少し広めに
         if (e.x < -500 || e.y > 2500 || e.y < -600) enemies.splice(i, 1);
     }
 }
@@ -175,14 +167,14 @@ function updateBullets() {
         let b = bullets[i];
         b.x += b.vx; b.y += b.vy; b.life--;
         ctx.save();
-        // --- ラメを細かく繊細に ---
-        ctx.shadowBlur = 10; ctx.shadowColor = '#FF69B4';
-        // 粒子の数を6→8に増やし、サイズを小さく(max5→max2.5)
-        for(let j=0; j<8; j++) {
-            ctx.fillStyle = j % 2 === 0 ? '#FF69B4' : '#FFFFFF';
+        // --- さらに細かく、キラキラなラメ ---
+        ctx.shadowBlur = 12; ctx.shadowColor = '#FFB6C1';
+        // 粒子の数を15個に増やし、サイズを極小(1px以下もあり)に
+        for(let j=0; j<15; j++) {
+            const colors = ['#FF69B4', '#FFFFFF', '#FFC0CB', '#FF1493'];
+            ctx.fillStyle = colors[Math.floor(Math.random()*colors.length)];
             ctx.beginPath(); 
-            // 拡散範囲も少し狭めて密度を上げる
-            ctx.arc(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30, Math.random()*2.5 + 0.5, 0, Math.PI*2); 
+            ctx.arc(b.x + (Math.random()-0.5)*35, b.y + (Math.random()-0.5)*35, Math.random()*1.8 + 0.2, 0, Math.PI*2); 
             ctx.fill();
         }
         ctx.restore();
@@ -207,7 +199,6 @@ function gameLoop() {
     if (isGameOver) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
 
     if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
@@ -233,7 +224,6 @@ function gameLoop() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#FF00FF"; ctx.font = "bold 24px Arial";
     ctx.fillText(`PURIFIED: ${score}`, 20, 40);
-    
     requestAnimationFrame(gameLoop);
 }
 gameLoop();

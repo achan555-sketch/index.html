@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Lipstick Prototype v0.1</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #110011; /* 深い黒ピンク */
+        cursor: none; /* マウスカーソルを消す演出 */
+    }
+    canvas {
+        display: block;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// キャンバスを画面いっぱいに
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// プレイヤー（ピンクの四角）の情報
+let player = {
+    x: 100,
+    y: canvas.height / 2,
+    size: 40,
+    color: '#FF00FF' // 強烈なマゼンタピンク
+};
+
+// マウスの位置を追跡
+let mouseY = canvas.height / 2;
+window.addEventListener('mousemove', (e) => {
+    mouseY = e.clientY;
+});
+
+// ウィンドウサイズが変わったら調整
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+
+// 背景のネオンエフェクト用変数
+let time = 0;
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // --- 1. 背景を描く（ネオンピンクに脈動させる） ---
+    time += 0.05;
+    // 中心から外側へ広がる円形グラデーション
+    const gradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0, // 中心
+        canvas.width / 2, canvas.height / 2, canvas.width // 外側
+    );
+    // 色が時間とともにゆっくり変わるようにする
+    const intensity = Math.sin(time) * 20 + 30; // 光の強さを揺らす
+    gradient.addColorStop(0, `hsl(300, 100%, ${intensity}%)`); // 中心は明るいピンク
+    gradient.addColorStop(1, '#110011'); // 外側は暗い宇宙色
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+    // --- 2. プレイヤーを動かす ---
+    // マウスの位置に滑らかに近づける（線形補間）
+    player.y += (mouseY - player.y) * 0.1;
+
+
+    // --- 3. プレイヤーを描く（強烈な発光エフェクト付き） ---
+    ctx.save(); // 現在の設定を保存
+
+    // 本体
+    ctx.fillStyle = player.color;
+    // 発光エフェクト（影を光に見せる）
+    ctx.shadowBlur = 30; // ぼかしの強さ
+    ctx.shadowColor = '#FF66FF'; // 光の色（少し明るいピンク）
+    
+    // 四角を描く（中心が基準点になるように調整）
+    ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
+    
+    // さらに強い中心光を重ねる
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#FFFFFF'; // 中心は白っぽく
+    ctx.fillRect(player.x - player.size/4, player.y - player.size/4, player.size/2, player.size/2);
+
+    ctx.restore(); // 設定を元に戻す
+
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>

@@ -18,46 +18,38 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- プレイヤー & 弾 ---
 let player = { x: 100, y: canvas.height / 2, width: 60, height: 30, colorBody: '#FF69B4', colorTip: '#FF1493' };
 let mouseY = canvas.height / 2;
 let bullets = [];
 
-// --- 🌟 星空の設定 (Phase 2 追加) ---
+// 星空の設定
 let stars = [];
-const starCount = 150;
-for (let i = 0; i < starCount; i++) {
+for (let i = 0; i < 150; i++) {
     stars.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         size: Math.random() * 1.5,
         opacity: Math.random(),
-        twinkleSpeed: 0.02 + Math.random() * 0.05 // 光る速さ
+        twinkleSpeed: 0.02 + Math.random() * 0.05
     });
 }
 
-// --- イベントリスナー ---
 window.addEventListener('mousemove', (e) => { mouseY = e.clientY; });
 window.addEventListener('mousedown', () => {
     bullets.push({ x: player.x + player.width/2, y: player.y, speed: 18, size: 25 });
 });
 
-// --- 描画関数 ---
-
-// 星を描く (モノクロ・キラキラ)
 function drawStars() {
     ctx.fillStyle = "white";
     stars.forEach(s => {
-        // 星をチカチカさせる計算
         s.opacity += s.twinkleSpeed;
         if (s.opacity > 1 || s.opacity < 0) s.twinkleSpeed *= -1;
-        
-        ctx.globalAlpha = Math.abs(s.opacity); // 透明度を変える
+        ctx.globalAlpha = Math.abs(s.opacity);
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
         ctx.fill();
     });
-    ctx.globalAlpha = 1.0; // 透明度を戻す
+    ctx.globalAlpha = 1.0;
 }
 
 function drawPlayer() {
@@ -90,23 +82,18 @@ function drawBullets() {
         ctx.fill();
         ctx.restore();
     });
-    bullets = bullets.filter(b => b.x < canvas.width + 50); // 画面外の弾を削除
+    bullets = bullets.filter(b => b.x < canvas.width + 50);
 }
 
-// --- メインループ ---
 function gameLoop() {
-    // 背景を真っ黒に塗る
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    drawStars();   // 1. キラキラの星を描く
+    drawStars();
     player.y += (mouseY - player.y) * 0.1;
-    drawBullets(); // 2. 弾を描く
-    drawPlayer();  // 3. 自機を描く
-
+    drawBullets();
+    drawPlayer();
     requestAnimationFrame(gameLoop);
 }
-
 gameLoop();
 </script>
 </body>

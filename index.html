@@ -3,38 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Cosmic Lipstick - Sweet Ver.</title>
+<title>Cosmic Lipstick - Kusoge Ver.</title>
 <style>
-    /* マウスカーソルを表示するように修正(cursor: auto) */
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: auto; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; touch-action: none; }
     canvas { display: block; }
     
-    /* シンプルで可愛いゲームオーバー画面 */
+    /* 絶望のゲームオーバー画面 */
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: #FF69B4; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
-        border: 3px solid #FF69B4; border-radius: 20px; z-index: 100; width: 85%; box-sizing: border-box;
+        color: #ff0000; text-align: center; background: rgba(0,0,0,0.95); padding: 40px; 
+        border: 2px solid #333; z-index: 100; width: 90%; box-sizing: border-box;
     }
-    #gameOver h1 { font-size: 26px; margin-bottom: 15px; }
-    #gameOver p { font-size: 18px; margin-bottom: 25px; color: #fff; line-height: 1.6; }
+    #gameOver h1 { font-size: 30px; margin-bottom: 15px; letter-spacing: 5px; }
+    #gameOver p { font-size: 18px; margin-bottom: 25px; color: #ff0000; font-weight: bold; }
 
     #feverMode {
         display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
         color: #FF00FF; font-size: 32px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
-        animation: blink 0.2s infinite; z-index: 50; white-space: nowrap;
+        animation: blink 0.1s infinite; z-index: 50; 
     }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
     
-    button { padding: 12px 35px; font-size: 18px; background: #FF69B4; color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; }
+    button { padding: 10px 40px; font-size: 16px; background: #333; color: #ff0000; border: 1px solid #ff0000; cursor: pointer; }
 </style>
 </head>
 <body id="mainBody">
 
-<div id="feverMode">✨ KAWAII FEVER ✨</div>
+<div id="feverMode">⚠️ MIRACLE FEVER (LUCKY YOU) ⚠️</div>
 <div id="gameOver">
-    <h1>🎀 Game Over 🎀</h1>
-    <p id="deathMessage">潤いチャージして出直そ✨</p>
-    <button onclick="location.reload()">TRY AGAIN ✨</button>
+    <h1>GAME OVER</h1>
+    <p id="deathMessage">一生カサカサしてなｗ</p>
+    <button onclick="location.reload()">RETRY?</button>
 </div>
 <canvas id="gameCanvas"></canvas>
 
@@ -63,13 +62,14 @@ let isFever = false;
 let feverTimer = 0;
 let lastFeverScore = 0;
 
-// シンプルで可愛いセリフ集
-const girlMessages = [
-    "次はもっと可愛くね❤︎",
-    "潤いチャージして出直そ✨",
-    "ケアを忘れないで！もう一度❤︎",
-    "キラキラが足りなかったかも✨",
-    "次は最後まで可愛くね🎀"
+// ネガティブ・毒舌メッセージ
+const toxicMessages = [
+    "一生カサカサしてなｗ",
+    "センスなさすぎ。やめたら？",
+    "画面汚さないでくれる？",
+    "向いてないよｗ",
+    "その程度なんだｗウケる",
+    "潤い以前の問題だねｗ"
 ];
 
 function resizeCanvas() {
@@ -86,7 +86,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 80; i++) {
     stars.push({ x: Math.random() * 1000, y: Math.random() * 1500, size: Math.random() * 1.5, opacity: Math.random() });
 }
 
@@ -96,7 +96,6 @@ const updateTarget = (x, y) => {
 
 window.addEventListener('mousemove', (e) => { if(!isGameOver) updateTarget(e.clientX, e.clientY); });
 window.addEventListener('mousedown', (e) => { if(!isGameOver && !isFever) fireGlitter(); });
-
 canvas.addEventListener('touchstart', (e) => {
     if(!isGameOver) {
         updateTarget(e.touches[0].clientX, e.touches[0].clientY);
@@ -104,36 +103,38 @@ canvas.addEventListener('touchstart', (e) => {
     }
     e.preventDefault();
 }, { passive: false });
-
 canvas.addEventListener('touchmove', (e) => {
     if(!isGameOver) updateTarget(e.touches[0].clientX, e.touches[0].clientY);
     e.preventDefault();
 }, { passive: false });
 
 function fireGlitter() {
-    bullets.push({ x: player.x, y: player.y, vx: isPortrait ? 0 : 20, vy: isPortrait ? -20 : 0, size: 30, life: 50 });
+    bullets.push({ x: player.x, y: player.y, vx: isPortrait ? 0 : 22, vy: isPortrait ? -22 : 0, size: 25, life: 40 });
 }
 
 function spawnEnemy() {
-    if (Math.random() < 0.04) {
+    // スコアが上がるほど出現しやすくする（クソゲー化）
+    let spawnRate = 0.04 + (score / 10000);
+    if (Math.random() < spawnRate) {
         let ex, ey;
         if (isPortrait) { ex = Math.random() * (canvas.width / gameScale); ey = -100; }
         else { ex = VIRTUAL_WIDTH + 100; ey = Math.random() * (canvas.height / gameScale); }
-        enemies.push({ x: ex, y: ey, width: 110, height: 110, speed: 3 + Math.random() * 3, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
+        // スコアに応じてバケモノのスピードを上げる
+        let baseSpeed = 4 + (score / 200);
+        enemies.push({ x: ex, y: ey, width: 115, height: 115, speed: baseSpeed + Math.random() * 3, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
     }
 }
 
 function drawFish(e) {
     ctx.save();
     ctx.translate(e.x, e.y);
-    const wiggle = Math.sin(Date.now() * 0.008 + e.wiggle) * 15;
+    const wiggle = Math.sin(Date.now() * 0.01 + e.wiggle) * 20;
     if (isPortrait) ctx.translate(wiggle, 0); else ctx.translate(0, wiggle);
     if (e.status === 'normal') {
         if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
-        ctx.shadowBlur = 20; ctx.shadowColor = "#FF00FF";
         ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, 50, 40, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 0, 40, 30, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -148,17 +149,17 @@ function updateEnemies() {
             });
             
             const isCollided = Math.hypot(player.x - e.x, player.y - e.y) < 60;
-            const isPassedPC = !isPortrait && e.x < player.x - 40;
-            const isPassedMobile = isPortrait && e.y > player.y + 40;
+            const isPassedPC = !isPortrait && e.x < player.x - 50;
+            const isPassedMobile = isPortrait && e.y > player.y + 50;
 
             if (isCollided || isPassedPC || isPassedMobile) {
                 isGameOver = true; 
-                document.getElementById('deathMessage').innerHTML = girlMessages[Math.floor(Math.random() * girlMessages.length)];
+                document.getElementById('deathMessage').innerHTML = toxicMessages[Math.floor(Math.random() * toxicMessages.length)];
                 document.getElementById('gameOver').style.display = 'block';
             }
-        } else { e.y -= 20; e.x += 20; }
+        } else { e.y -= 25; e.x += 25; }
         drawFish(e);
-        if (e.x < -500 || e.y > 2500 || e.y < -600) enemies.splice(i, 1);
+        if (e.x < -600 || e.y > 2500 || e.y < -700) enemies.splice(i, 1);
     }
 }
 
@@ -167,11 +168,11 @@ function updateBullets() {
         let b = bullets[i];
         b.x += b.vx; b.y += b.vy; b.life--;
         ctx.save();
-        ctx.shadowBlur = 10; ctx.shadowColor = '#FFB6C1';
-        for(let j=0; j<12; j++) {
+        ctx.shadowBlur = 8; ctx.shadowColor = '#FFB6C1';
+        for(let j=0; j<15; j++) {
             ctx.fillStyle = j % 2 === 0 ? '#FF69B4' : '#FFFFFF';
             ctx.beginPath(); 
-            ctx.arc(b.x + (Math.random()-0.5)*35, b.y + (Math.random()-0.5)*35, Math.random()*2, 0, Math.PI*2); 
+            ctx.arc(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30, Math.random()*1.5, 0, Math.PI*2); 
             ctx.fill();
         }
         ctx.restore();
@@ -186,8 +187,6 @@ function drawPlayer() {
     if (playerImg.complete) {
         ctx.shadowBlur = 30; ctx.shadowColor = '#FF69B4';
         ctx.drawImage(playerImg, -player.width/2, -player.height/2, player.width, player.height);
-    } else {
-        ctx.fillStyle = '#FF69B4'; ctx.fillRect(-40, -20, 80, 40);
     }
     ctx.restore();
 }
@@ -198,8 +197,9 @@ function gameLoop() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
 
-    if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
-        isFever = true; feverTimer = 250; lastFeverScore = score; feverUI.style.display = 'block';
+    // フィーバー判定 (500ptごとにして難易度アップ)
+    if (score > 0 && score % 500 === 0 && score !== lastFeverScore) {
+        isFever = true; feverTimer = 180; lastFeverScore = score; feverUI.style.display = 'block';
     }
     if (isFever) {
         feverTimer--; if (feverTimer % 4 === 0) fireGlitter();
@@ -207,19 +207,19 @@ function gameLoop() {
     }
 
     ctx.fillStyle = "white";
-    stars.forEach(s => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
+    stars.forEach(s => { ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
     ctx.globalAlpha = 1.0;
 
     spawnEnemy();
     updateEnemies();
-    player.x += (targetPos.x - player.x) * 0.2;
-    player.y += (targetPos.y - player.y) * 0.2;
+    player.x += (targetPos.x - player.x) * 0.25;
+    player.y += (targetPos.y - player.y) * 0.25;
     updateBullets();
     drawPlayer();
     
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#FF00FF"; ctx.font = "bold 24px Arial";
-    ctx.fillText(`PURIFIED: ${score}`, 20, 40);
+    ctx.fillStyle = "#FF00FF"; ctx.font = "bold 20px Arial";
+    ctx.fillText(`SCORE: ${score}`, 20, 35);
     requestAnimationFrame(gameLoop);
 }
 gameLoop();

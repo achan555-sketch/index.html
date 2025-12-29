@@ -1,218 +1,320 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick - Phase 6 (Weirdest Dead Fish)</title>
-<style>
-    body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; }
-    canvas { display: block; }
-    #gameOver {
-        display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
-        border: 10px double #FF00FF; z-index: 100;
-    }
-    button { 
-        padding: 10px 20px; font-size: 20px; background: #FF00FF; color: white; 
-        border: none; cursor: pointer; font-weight: bold;
-    }
-    /* ゲームオーバー時だけカーソルを出すためのクラス */
-    .show-cursor { cursor: auto !important; }
-</style>
+    <meta charset="UTF-8">
+    <title>Cosmic Trade - God Mode</title>
+    <style>
+        :root {
+            --main-pink: #ff007f;
+            --neon-green: #39ff14;
+            --neon-red: #ff3131;
+            --bg-black: #050505;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: radial-gradient(circle, #20002c 0%, #050505 100%);
+        }
+
+        /* 宇宙のキラキラ背景 */
+        .stars {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
+        }
+
+        header {
+            padding: 10px 20px;
+            background: rgba(255, 0, 127, 0.2);
+            border-bottom: 2px solid var(--main-pink);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            flex-grow: 1;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        /* 4つのチャートエリア */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .chart-box {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #444;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-title {
+            position: absolute;
+            top: 5px; left: 5px;
+            color: var(--main-pink);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        canvas { width: 100%; height: 100%; }
+
+        /* 板情報エリア */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .order-book {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid var(--main-pink);
+            padding: 10px;
+            flex-grow: 1;
+            font-size: 14px;
+        }
+
+        .order-book h3 { margin: 0 0 10px 0; color: var(--main-pink); text-align: center; }
+        .order-row { display: flex; justify-content: space-between; margin: 2px 0; }
+        .ask { color: var(--neon-red); }
+        .bid { color: var(--neon-green); }
+
+        /* ランキング */
+        .leaderboard {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border: 1px solid #555;
+        }
+
+        .rank-row { display: flex; justify-content: space-between; font-size: 12px; margin: 3px 0; }
+
+        /* エネミー宇宙魚 */
+        #enemy-fish {
+            position: absolute;
+            width: 150px;
+            bottom: 100px;
+            right: 320px;
+            transition: transform 0.5s;
+            animation: floating 3s infinite ease-in-out;
+            z-index: 100;
+        }
+
+        @keyframes floating {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        /* 神のボタン */
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 2px solid var(--main-pink);
+        }
+
+        .god-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            transition: 0.3s;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .btn-ascension { background: linear-gradient(to bottom, #ff00ff, #7a00ff); box-shadow: 0 0 20px #ff00ff; }
+        .btn-judgment { background: linear-gradient(to bottom, #ff3131, #8b0000); box-shadow: 0 0 20px #ff3131; }
+        .god-btn:hover { transform: scale(1.1); }
+
+        /* 画面粉砕エフェクト */
+        #shatter-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(0px);
+            pointer-events: none;
+            display: none;
+            z-index: 999;
+        }
+
+        .shaking { animation: shake 0.2s infinite; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            20% { transform: translate(-3px, 0px); }
+            40% { transform: translate(3px, 2px); }
+            100% { transform: translate(1px, -1px); }
+        }
+    </style>
 </head>
-<body id="mainBody">
-<div id="gameOver">
-    <h1>💀 DRY & DEAD 💀</h1>
-    <p>もっと潤いを与えて...</p>
-    <button onclick="location.reload()">RETRY</button>
+<body>
+
+<div class="stars"></div>
+<div id="shatter-overlay"></div>
+
+<header>
+    <div style="font-size: 24px; font-weight: bold; color: var(--main-pink);">🌌 COSMIC TRADE v2.0</div>
+    <div id="balance">💰 BALANCE: $1,000,000</div>
+</header>
+
+<div class="main-container">
+    <div class="charts-grid" id="charts">
+        </div>
+
+    <div class="sidebar">
+        <div class="order-book" id="order-book">
+            <h3>ORDER BOOK</h3>
+            <div id="asks"></div>
+            <div style="text-align: center; border-top:1px solid #444; margin:5px 0; padding-top:5px; font-size:18px;">$150.25</div>
+            <div id="bids"></div>
+        </div>
+
+        <div class="leaderboard">
+            <h4 style="margin: 0 0 5px 0; color: gold;">TOP TRADERS</h4>
+            <div id="rankings"></div>
+        </div>
+    </div>
 </div>
-<canvas id="gameCanvas"></canvas>
+
+<img id="enemy-fish" src="https://i.ibb.co/XfXkY8x/unnamed-1.jpg" alt="Cosmic Enemy">
+
+<div class="controls">
+    <button class="god-btn btn-ascension" onclick="activateGodMode('ascension')">天昇 (Ascension)</button>
+    <button class="god-btn btn-judgment" onclick="activateGodMode('judgment')">天罰 (Judgment)</button>
+</div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const body = document.getElementById('mainBody');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    const chartsContainer = document.getElementById('charts');
+    const chartInstances = [];
+    const users = ["achan", "Elon Musk", "Vitalik", "CZ", "Warren"];
+    let currentBalance = 1000000;
 
-let player = { x: 100, y: canvas.height / 2, width: 70, height: 35, colorBody: '#FF69B4', colorTip: '#FF1493' };
-let mouseY = canvas.height / 2;
-let bullets = [];
-let paintTrails = [];
-let stars = [];
-let enemies = [];
-let score = 0;
-let isGameOver = false;
+    // チャートの初期化
+    function initCharts() {
+        for (let i = 0; i < 4; i++) {
+            const box = document.createElement('div');
+            box.className = 'chart-box';
+            box.innerHTML = `<div class="chart-title">PAIR: SPACE/USD-${i+1}</div><canvas id="chart-${i}"></canvas>`;
+            chartsContainer.appendChild(box);
+            
+            const canvas = box.querySelector('canvas');
+            const ctx = canvas.getContext('2d');
+            chartInstances.push({ ctx, canvas, candles: [] });
+        }
+    }
 
-for (let i = 0; i < 150; i++) {
-    stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05 });
-}
-
-window.addEventListener('mousemove', (e) => { if(!isGameOver) mouseY = e.clientY; });
-window.addEventListener('mousedown', () => {
-    // 弾に 'life' プロパティを追加 (60フレーム = 約1秒で消える設定)
-    if(!isGameOver) bullets.push({ x: player.x + player.width/2, y: player.y, speed: 15, size: 35, life: 50 });
-});
-
-function spawnEnemy() {
-    if (Math.random() < 0.03) {
-        enemies.push({
-            x: canvas.width + 100, y: Math.random() * canvas.height,
-            width: 80, height: 50, speed: 3 + Math.random() * 5,
-            status: 'normal',
-            timer: 0,
-            wiggle: Math.random() * Math.PI // 動きに個性を出す
+    // ローソク足の描画
+    function drawCandles(inst) {
+        const { ctx, canvas, candles } = inst;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const w = 15;
+        const spacing = 5;
+        
+        candles.forEach((c, idx) => {
+            const x = canvas.width - (idx * (w + spacing)) - 50;
+            const color = c.close >= c.open ? '#39ff14' : '#ff3131';
+            
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            
+            // ヒゲ
+            ctx.beginPath();
+            ctx.moveTo(x + w/2, canvas.height - c.high);
+            ctx.lineTo(x + w/2, canvas.height - c.low);
+            ctx.stroke();
+            
+            // 実体
+            const y = canvas.height - Math.max(c.open, c.close);
+            const h = Math.abs(c.open - c.close) || 1;
+            ctx.fillRect(x, y, w, h);
         });
     }
-}
 
-function drawStars() {
-    ctx.fillStyle = "white";
-    stars.forEach(s => {
-        s.opacity += s.twinkleSpeed;
-        if (s.opacity > 1 || s.opacity < 0) s.twinkleSpeed *= -1;
-        ctx.globalAlpha = Math.abs(s.opacity);
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.globalAlpha = 1.0;
-}
-
-function drawPaintedArea(time) {
-    if (paintTrails.length === 0) return;
-    ctx.save();
-    ctx.beginPath();
-    paintTrails.forEach(p => { ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); });
-    ctx.clip();
-    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
-    gradient.addColorStop(0, `hsl(300, 100%, ${Math.sin(time * 0.05) * 20 + 40}%)`);
-    gradient.addColorStop(1, '#220022');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-}
-
-function drawFish(e) {
-    ctx.save();
-    ctx.translate(e.x, e.y);
-    const wiggleY = Math.sin(Date.now() * 0.01 + e.wiggle) * 10;
-    ctx.translate(0, wiggleY);
-    
-    if (e.status === 'normal') {
-        // --- さらに変でキモい「死んだ魚」 ---
-        ctx.fillStyle = "#4a4a4a";
-        // ぶよぶよした体
-        ctx.beginPath();
-        ctx.moveTo(-40, 0);
-        ctx.bezierCurveTo(-40, -30, 40, -30, 40, 0);
-        ctx.bezierCurveTo(40, 40, -40, 40, -40, 0);
-        ctx.fill();
-        // 左右非対称な死んだ目
-        ctx.fillStyle = "white"; 
-        ctx.beginPath(); ctx.arc(-20, -5, 12, 0, Math.PI * 2); ctx.fill(); // 右目デカい
-        ctx.beginPath(); ctx.arc(5, -10, 5, 0, Math.PI * 2); ctx.fill();   // 左目小さい
-        ctx.fillStyle = "black";
-        ctx.beginPath(); ctx.arc(-22, -3, 4, 0, Math.PI * 2); ctx.fill();
-        // だらんと垂れたベロ
-        ctx.fillStyle = "#8b4513"; // カサカサの茶色
-        ctx.beginPath(); ctx.ellipse(-30, 15, 8, 15, 0.5, 0, Math.PI * 2); ctx.fill();
-    } else {
-        // --- 宇宙一やかましい「ギャル魚」 ---
-        ctx.shadowBlur = 30; ctx.shadowColor = "#FF00FF";
-        ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, e.width, e.height, 0, 0, Math.PI * 2); ctx.fill();
-        // デカすぎるリボン
-        ctx.fillStyle = "#FF00FF";
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(30, -60); ctx.lineTo(30, 0); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(-30, -60); ctx.lineTo(-30, 0); ctx.fill();
-        // ぷるぷるすぎる唇
-        ctx.fillStyle = "#FF1493";
-        ctx.beginPath(); ctx.ellipse(-40, 15, 25, 12, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(-35, 10, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
-        // ギャルな目
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(-25, -15, 15, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#00FFFF"; ctx.beginPath(); ctx.arc(-25, -15, 8, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-}
-
-function updateEnemies() {
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        let e = enemies[i];
-        if (e.status === 'normal') {
-            e.x -= e.speed;
-            bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 60) {
-                    e.status = 'purified';
-                    score += 10;
-                    paintTrails.push({ x: e.x, y: e.y, radius: 150 });
-                }
+    // データの更新
+    function updateData() {
+        chartInstances.forEach(inst => {
+            const lastClose = inst.candles.length > 0 ? inst.candles[0].close : 100;
+            const change = (Math.random() - 0.5) * 10;
+            const open = lastClose;
+            const close = open + change;
+            inst.candles.unshift({
+                open, close, 
+                high: Math.max(open, close) + Math.random() * 5,
+                low: Math.min(open, close) - Math.random() * 5
             });
-            if (Math.hypot(player.x - e.x, player.y - e.y) < 50) {
-                isGameOver = true;
-                body.classList.add('show-cursor'); // カーソルを復活させる
-                document.getElementById('gameOver').style.display = 'block';
+            if (inst.candles.length > 50) inst.candles.pop();
+            drawCandles(inst);
+        });
+
+        updateOrderBook();
+        updateRankings();
+    }
+
+    function updateOrderBook() {
+        const asks = document.getElementById('asks');
+        const bids = document.getElementById('bids');
+        asks.innerHTML = ''; bids.innerHTML = '';
+        for(let i=0; i<5; i++) {
+            asks.innerHTML += `<div class="order-row ask"><span>${(150.50 + i*0.1).toFixed(2)}</span><span>${(Math.random()*10).toFixed(1)}</span></div>`;
+            bids.innerHTML += `<div class="order-row bid"><span>${(150.00 - i*0.1).toFixed(2)}</span><span>${(Math.random()*10).toFixed(1)}</span></div>`;
+        }
+    }
+
+    function updateRankings() {
+        const rankDiv = document.getElementById('rankings');
+        rankDiv.innerHTML = '';
+        users.forEach((u, i) => {
+            rankDiv.innerHTML += `<div class="rank-row"><span>${i+1}. ${u}</span><span>$${(2000000 - i*200000).toLocaleString()}</span></div>`;
+        });
+    }
+
+    // 神モード発動
+    function activateGodMode(type) {
+        const overlay = document.getElementById('shatter-overlay');
+        const body = document.body;
+        const fish = document.getElementById('enemy-fish');
+
+        overlay.style.display = 'block';
+        body.classList.add('shaking');
+        
+        // 宇宙魚が攻撃してくる演出
+        fish.style.transform = 'scale(2) translateX(-500px)';
+
+        setTimeout(() => {
+            body.classList.remove('shaking');
+            overlay.style.display = 'none';
+            fish.style.transform = 'scale(1) translateX(0)';
+
+            if (type === 'ascension') {
+                alert("【天昇】物理法則を無視して全チャートが垂直発射！\n「富とは、奪うものではなく創るものである。」");
+                chartInstances.forEach(inst => inst.candles.forEach(c => { c.open += 100; c.close += 200; }));
+            } else {
+                alert("【天罰】全チャートが奈落の底へ。買い注文は蒸発しました。\n「強欲は、宇宙の塵となる。」");
+                chartInstances.forEach(inst => inst.candles.forEach(c => { c.open -= 100; c.close -= 200; }));
             }
-        } else {
-            e.x += 12; e.y -= 12;
-            e.timer++;
-            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 30 });
-        }
-        drawFish(e);
-        if (e.x < -200 || e.y < -200 || e.x > canvas.width + 500) enemies.splice(i, 1);
+        }, 1000);
     }
-}
 
-function updateBullets() {
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        b.x += b.speed;
-        b.life--; // 寿命を減らす
-
-        // 弾の軌跡
-        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
-
-        // 描画 (寿命が尽きそうになると透明になる)
-        ctx.save();
-        ctx.globalAlpha = b.life / 50;
-        ctx.shadowBlur = 15; ctx.shadowColor = '#FF00FF';
-        ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
-        ctx.beginPath(); ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-
-        // 寿命が尽きたら消す
-        if (b.life <= 0 || b.x > canvas.width + 50) {
-            bullets.splice(i, 1);
-        }
-    }
-}
-
-function drawPlayer() {
-    ctx.save();
-    ctx.translate(player.x, player.y);
-    ctx.shadowBlur = 20; ctx.shadowColor = player.colorBody;
-    ctx.fillStyle = player.colorBody;
-    ctx.beginPath(); ctx.roundRect(-player.width/2, -player.height/2, player.width*0.7, player.height, [5, 0, 0, 5]); ctx.fill();
-    ctx.fillStyle = player.colorTip;
-    ctx.beginPath(); ctx.moveTo(player.width*0.2, -player.height/2 + 5); ctx.lineTo(player.width/2, -player.height/4); ctx.lineTo(player.width/2, player.height/4); ctx.lineTo(player.width*0.2, player.height/2 - 5); ctx.closePath(); ctx.fill();
-    ctx.restore();
-}
-
-function gameLoop() {
-    if (isGameOver) return;
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawStars();
-    drawPaintedArea(Date.now() / 20);
-    spawnEnemy();
-    updateEnemies();
-    player.y += (mouseY - player.y) * 0.1;
-    updateBullets();
-    drawPlayer();
-    ctx.fillStyle = "white"; ctx.font = "bold 24px Arial";
-    ctx.fillText(`PURIFIED: ${score}`, 20, 50);
-    requestAnimationFrame(gameLoop);
-}
-gameLoop();
+    initCharts();
+    setInterval(updateData, 1000);
 </script>
+
 </body>
 </html>

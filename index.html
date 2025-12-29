@@ -3,27 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Cosmic Lipstick - Ultimate</title>
+<title>Cosmic Lipstick - Clean Ver.</title>
 <style>
-    /* 全体のスタイル設定 */
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; touch-action: none; }
     canvas { display: block; }
-    
-    /* ゲームオーバー画面 */
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
         color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
         border: 10px double #FF00FF; z-index: 100; width: 80%; box-sizing: border-box;
     }
-    
-    /* フィーバー演出の文字 */
     #feverMode {
         display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
         color: #FF00FF; font-size: 32px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
         animation: blink 0.2s infinite; z-index: 50; white-space: nowrap;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-    
     button { padding: 12px 24px; font-size: 20px; background: #FF00FF; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
 </style>
 </head>
@@ -42,21 +36,18 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const feverUI = document.getElementById('feverMode');
 
-// --- 設定と画像 ---
 let isPortrait = false; 
 let gameScale = 1;
-const VIRTUAL_WIDTH = 800; // 横モードの基準幅
+const VIRTUAL_WIDTH = 800; 
 
 const enemyImg = new Image();
 enemyImg.src = 'unnamed__1_-removebg-preview.png'; 
 const playerImg = new Image();
 playerImg.src = 'player.png'; 
 
-// --- ゲーム状態 ---
 let player = { x: 0, y: 0, width: 90, height: 45 };
 let targetPos = { x: 0, y: 0 };
 let bullets = [];
-let paintTrails = [];
 let stars = [];
 let enemies = [];
 let score = 0;
@@ -65,19 +56,16 @@ let isFever = false;
 let feverTimer = 0;
 let lastFeverScore = 0;
 
-// キャンバスリサイズ & 縦横判定
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     isPortrait = canvas.height > canvas.width; 
     
     if (isPortrait) {
-        // スマホ(縦)モード
         gameScale = canvas.width / 450; 
         player.x = 225; 
         player.y = (canvas.height / gameScale) - 100;
     } else {
-        // PC(横)モード
         gameScale = canvas.width / VIRTUAL_WIDTH;
         player.x = 100;
         player.y = (canvas.height / gameScale) / 2;
@@ -88,18 +76,12 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// 星の背景作成
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 120; i++) {
     stars.push({ x: Math.random() * 1000, y: Math.random() * 1500, size: Math.random() * 2, opacity: Math.random() });
 }
 
-// --- 操作イベント ---
 const updateTarget = (x, y) => {
-    if (isPortrait) {
-        targetPos.x = x / gameScale; 
-    } else {
-        targetPos.y = y / gameScale;
-    }
+    if (isPortrait) { targetPos.x = x / gameScale; } else { targetPos.y = y / gameScale; }
 };
 
 window.addEventListener('mousemove', (e) => { if(!isGameOver) updateTarget(e.clientX, e.clientY); });
@@ -121,8 +103,7 @@ canvas.addEventListener('touchmove', (e) => {
 function fireGlitter() {
     bullets.push({
         x: player.x, y: player.y,
-        vx: isPortrait ? 0 : 20,
-        vy: isPortrait ? -20 : 0,
+        vx: isPortrait ? 0 : 20, vy: isPortrait ? -20 : 0,
         size: 30, life: 50
     });
 }
@@ -131,11 +112,9 @@ function spawnEnemy() {
     if (Math.random() < 0.04) {
         let ex, ey;
         if (isPortrait) {
-            ex = Math.random() * (canvas.width / gameScale);
-            ey = -100; 
+            ex = Math.random() * (canvas.width / gameScale); ey = -100; 
         } else {
-            ex = VIRTUAL_WIDTH + 100; 
-            ey = Math.random() * (canvas.height / gameScale);
+            ex = VIRTUAL_WIDTH + 100; ey = Math.random() * (canvas.height / gameScale);
         }
         enemies.push({ x: ex, y: ey, width: 110, height: 110, speed: 3 + Math.random() * 4, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
     }
@@ -150,11 +129,10 @@ function drawFish(e) {
     if (e.status === 'normal') {
         if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
-        // 浄化したギャル魚
         ctx.shadowBlur = 30; ctx.shadowColor = "#FF00FF";
         ctx.fillStyle = "#FF69B4";
         ctx.beginPath(); ctx.ellipse(0, 0, 50, 40, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#FF1493"; // リップ
+        ctx.fillStyle = "#FF1493";
         ctx.beginPath(); ctx.ellipse(-30, 10, 20, 10, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
@@ -168,14 +146,13 @@ function updateEnemies() {
             bullets.forEach((b) => {
                 if (Math.hypot(b.x - e.x, b.y - e.y) < 70) {
                     e.status = 'purified'; score += 10;
-                    paintTrails.push({ x: e.x, y: e.y, radius: 200 });
                 }
             });
             if (Math.hypot(player.x - e.x, player.y - e.y) < 60) {
                 isGameOver = true; document.getElementById('gameOver').style.display = 'block';
             }
         } else {
-            e.y -= 20; e.x += 20; // 浄化されて昇天
+            e.y -= 20; e.x += 20;
         }
         drawFish(e);
         if (e.x < -400 || e.y > 2000 || e.y < -500) enemies.splice(i, 1);
@@ -195,7 +172,6 @@ function updateBullets() {
             ctx.fill();
         }
         ctx.restore();
-        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
         if (b.life <= 0) bullets.splice(i, 1);
     }
 }
@@ -203,13 +179,11 @@ function updateBullets() {
 function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
-    if (isPortrait) ctx.rotate(-Math.PI / 2); // 縦モードなら上を向く
-    
+    if (isPortrait) ctx.rotate(-Math.PI / 2);
     if (playerImg.complete) {
         ctx.shadowBlur = 30; ctx.shadowColor = '#FF69B4';
         ctx.drawImage(playerImg, -player.width/2, -player.height/2, player.width, player.height);
     } else {
-        // 画像がない時のバックアップ
         ctx.fillStyle = '#FF69B4'; ctx.fillRect(-40, -20, 80, 40);
     }
     ctx.restore();
@@ -222,7 +196,6 @@ function gameLoop() {
     
     ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
 
-    // フィーバー判定 (100ptごと)
     if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
         isFever = true; feverTimer = 250; lastFeverScore = score; feverUI.style.display = 'block';
     }
@@ -232,31 +205,17 @@ function gameLoop() {
         if (feverTimer <= 0) { isFever = false; feverUI.style.display = 'none'; }
     }
 
-    // 星の描画
     ctx.fillStyle = "white";
     stars.forEach(s => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
     ctx.globalAlpha = 1.0;
 
-    // 塗りつぶしエフェクト
-    ctx.save();
-    ctx.beginPath();
-    paintTrails.forEach(p => { ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); });
-    ctx.clip();
-    ctx.fillStyle = isFever ? '#330033' : '#110011';
-    ctx.fillRect(0, 0, 2000, 2000);
-    ctx.restore();
-
     spawnEnemy();
     updateEnemies();
-    
-    // スムーズな移動
     player.x += (targetPos.x - player.x) * 0.2;
     player.y += (targetPos.y - player.y) * 0.2;
-    
     updateBullets();
     drawPlayer();
     
-    // スコア表示
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#FF00FF"; ctx.font = "bold 24px Arial";
     ctx.fillText(`PURIFIED: ${score}`, 20, 40);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick - vs Cosmic Fish</title>
+<title>Cosmic Lipstick - vs Transparent Fish</title>
 <style>
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; }
     canvas { display: block; }
@@ -34,9 +34,9 @@ const body = document.getElementById('mainBody');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- 画像の読み込み ---
+// --- 画像の読み込み (新しいファイル名に修正) ---
 const enemyImg = new Image();
-enemyImg.src = 'unnamed (1).jpg'; // ここに保存した画像名を指定
+enemyImg.src = 'unnamed__1_-removebg-preview.png'; 
 
 let player = { x: 100, y: canvas.height / 2, width: 70, height: 35, colorBody: '#FF69B4', colorTip: '#FF1493' };
 let mouseY = canvas.height / 2;
@@ -61,7 +61,7 @@ function spawnEnemy() {
     if (Math.random() < 0.03) {
         enemies.push({
             x: canvas.width + 100, y: Math.random() * canvas.height,
-            width: 100, height: 100, speed: 2 + Math.random() * 4,
+            width: 120, height: 120, speed: 2.5 + Math.random() * 4,
             status: 'normal',
             timer: 0,
             wiggle: Math.random() * Math.PI 
@@ -88,7 +88,7 @@ function drawPaintedArea(time) {
     ctx.clip();
     const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
     gradient.addColorStop(0, `hsl(320, 100%, ${Math.sin(time * 0.05) * 20 + 50}%)`);
-    gradient.addColorStop(1, '#220022');
+    gradient.addColorStop(1, '#110011');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
@@ -97,31 +97,32 @@ function drawPaintedArea(time) {
 function drawFish(e) {
     ctx.save();
     ctx.translate(e.x, e.y);
-    const wiggleY = Math.sin(Date.now() * 0.01 + e.wiggle) * 15;
+    // 魚を上下にゆらゆらさせる
+    const wiggleY = Math.sin(Date.now() * 0.008 + e.wiggle) * 15;
     ctx.translate(0, wiggleY);
     
     if (e.status === 'normal') {
-        // --- 例の「キモすぎる宇宙魚」を描画 ---
+        // --- 背景透過したキモカワ魚 ---
         if (enemyImg.complete) {
-            // 画像を中央に配置
-            ctx.drawImage(enemyImg, -e.width/1, -e.height/1, e.width*2, e.height*2);
+            // 画像を中心に描画
+            ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
         } else {
-            // 画像読み込み中の代わりの形
-            ctx.fillStyle = "#4a4a4a";
+            // 画像読み込み中
+            ctx.fillStyle = "rgba(100, 100, 100, 0.5)";
             ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
         }
     } else {
-        // --- 浄化された「ギャル魚」 ---
+        // --- 浄化（ギャル魚） ---
         ctx.shadowBlur = 30; ctx.shadowColor = "#FF00FF";
         ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, 60, 40, 0, 0, Math.PI * 2); ctx.fill();
-        // リボンの描画
+        ctx.beginPath(); ctx.ellipse(0, 0, 65, 45, 0, 0, Math.PI * 2); ctx.fill();
+        // リボン
         ctx.fillStyle = "#FF00FF";
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(30, -60); ctx.lineTo(30, 0); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(-30, -60); ctx.lineTo(-30, 0); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(30, -65); ctx.lineTo(30, 0); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(-30, -65); ctx.lineTo(-30, 0); ctx.fill();
         // ぷるぷる唇
         ctx.fillStyle = "#FF1493";
-        ctx.beginPath(); ctx.ellipse(-40, 15, 25, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-45, 15, 25, 12, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -131,22 +132,25 @@ function updateEnemies() {
         let e = enemies[i];
         if (e.status === 'normal') {
             e.x -= e.speed;
+            // 弾との当たり判定
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) {
+                if (Math.hypot(b.x - e.x, b.y - e.y) < 65) {
                     e.status = 'purified';
                     score += 10;
                     paintTrails.push({ x: e.x, y: e.y, radius: 200 });
                 }
             });
+            // プレイヤー（リップ）との当たり判定
             if (Math.hypot(player.x - e.x, player.y - e.y) < 60) {
                 isGameOver = true;
                 body.classList.add('show-cursor');
                 document.getElementById('gameOver').style.display = 'block';
             }
         } else {
-            e.x += 15; e.y -= 15;
+            // 浄化されたら上に飛んでいく
+            e.x += 18; e.y -= 18;
             e.timer++;
-            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 40 });
+            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 45 });
         }
         drawFish(e);
         if (e.x < -300 || e.y < -300 || e.x > canvas.width + 500) enemies.splice(i, 1);
@@ -201,4 +205,3 @@ gameLoop();
 </script>
 </body>
 </html>
-

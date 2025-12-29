@@ -230,3 +230,21 @@ gameLoop();
 </script>
 </body>
 </html>
+
+// --- タッチ操作の追加 (スマホ用) ---
+canvas.addEventListener('touchstart', (e) => {
+    if(!isGameOver) {
+        const touch = e.touches[0];
+        mouseY = touch.clientY;
+        if (!isFever) fireGlitter(); // タップで発射
+    }
+    e.preventDefault(); // 画面のスクロールを防止
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    if(!isGameOver) {
+        const touch = e.touches[0];
+        mouseY = touch.clientY; // 指の動きに合わせてリップが動く
+    }
+    e.preventDefault();
+}, { passive: false });

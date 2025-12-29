@@ -3,20 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick - Phase 5 (Gyaru Fish!)</title>
+<title>Cosmic Lipstick - Phase 6 (Weirdest Dead Fish)</title>
 <style>
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; }
     canvas { display: block; }
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: #FF00FF; text-align: center; background: rgba(0,0,0,0.8); padding: 20px; border: 5px solid #FF00FF;
+        color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
+        border: 10px double #FF00FF; z-index: 100;
     }
+    button { 
+        padding: 10px 20px; font-size: 20px; background: #FF00FF; color: white; 
+        border: none; cursor: pointer; font-weight: bold;
+    }
+    /* ゲームオーバー時だけカーソルを出すためのクラス */
+    .show-cursor { cursor: auto !important; }
 </style>
 </head>
-<body>
+<body id="mainBody">
 <div id="gameOver">
-    <h1>GAME OVER</h1>
-    <p>You were too dry...</p>
+    <h1>💀 DRY & DEAD 💀</h1>
+    <p>もっと潤いを与えて...</p>
     <button onclick="location.reload()">RETRY</button>
 </div>
 <canvas id="gameCanvas"></canvas>
@@ -24,11 +31,11 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const body = document.getElementById('mainBody');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- ゲームデータ ---
-let player = { x: 100, y: canvas.height / 2, width: 60, height: 30, colorBody: '#FF69B4', colorTip: '#FF1493' };
+let player = { x: 100, y: canvas.height / 2, width: 70, height: 35, colorBody: '#FF69B4', colorTip: '#FF1493' };
 let mouseY = canvas.height / 2;
 let bullets = [];
 let paintTrails = [];
@@ -37,23 +44,24 @@ let enemies = [];
 let score = 0;
 let isGameOver = false;
 
-// 星空の初期化
 for (let i = 0; i < 150; i++) {
     stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05 });
 }
 
 window.addEventListener('mousemove', (e) => { if(!isGameOver) mouseY = e.clientY; });
 window.addEventListener('mousedown', () => {
-    if(!isGameOver) bullets.push({ x: player.x + player.width/2, y: player.y, speed: 22, size: 28 });
+    // 弾に 'life' プロパティを追加 (60フレーム = 約1秒で消える設定)
+    if(!isGameOver) bullets.push({ x: player.x + player.width/2, y: player.y, speed: 15, size: 35, life: 50 });
 });
 
 function spawnEnemy() {
-    if (Math.random() < 0.025) {
+    if (Math.random() < 0.03) {
         enemies.push({
             x: canvas.width + 100, y: Math.random() * canvas.height,
-            width: 70, height: 40, speed: 4 + Math.random() * 4,
-            status: 'normal', // 'normal' または 'purified' (ギャル)
-            timer: 0 // 演出用
+            width: 80, height: 50, speed: 3 + Math.random() * 5,
+            status: 'normal',
+            timer: 0,
+            wiggle: Math.random() * Math.PI // 動きに個性を出す
         });
     }
 }
@@ -86,37 +94,43 @@ function drawPaintedArea(time) {
 function drawFish(e) {
     ctx.save();
     ctx.translate(e.x, e.y);
+    const wiggleY = Math.sin(Date.now() * 0.01 + e.wiggle) * 10;
+    ctx.translate(0, wiggleY);
     
     if (e.status === 'normal') {
-        // --- キモいグレーの魚 ---
-        ctx.fillStyle = "#666";
-        // 体
-        ctx.beginPath(); ctx.ellipse(0, 0, e.width/2, e.height/2, 0, 0, Math.PI * 2); ctx.fill();
-        // 尾びれ
-        ctx.beginPath(); ctx.moveTo(e.width/2, 0); ctx.lineTo(e.width/2+20, -15); ctx.lineTo(e.width/2+20, 15); ctx.fill();
-        // 死んだ目
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(-15, -5, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(-15, -5, 3, 0, Math.PI * 2); ctx.fill();
-        // 半開きの口
-        ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-25, 10, 5, 0, Math.PI); ctx.stroke();
+        // --- さらに変でキモい「死んだ魚」 ---
+        ctx.fillStyle = "#4a4a4a";
+        // ぶよぶよした体
+        ctx.beginPath();
+        ctx.moveTo(-40, 0);
+        ctx.bezierCurveTo(-40, -30, 40, -30, 40, 0);
+        ctx.bezierCurveTo(40, 40, -40, 40, -40, 0);
+        ctx.fill();
+        // 左右非対称な死んだ目
+        ctx.fillStyle = "white"; 
+        ctx.beginPath(); ctx.arc(-20, -5, 12, 0, Math.PI * 2); ctx.fill(); // 右目デカい
+        ctx.beginPath(); ctx.arc(5, -10, 5, 0, Math.PI * 2); ctx.fill();   // 左目小さい
+        ctx.fillStyle = "black";
+        ctx.beginPath(); ctx.arc(-22, -3, 4, 0, Math.PI * 2); ctx.fill();
+        // だらんと垂れたベロ
+        ctx.fillStyle = "#8b4513"; // カサカサの茶色
+        ctx.beginPath(); ctx.ellipse(-30, 15, 8, 15, 0.5, 0, Math.PI * 2); ctx.fill();
     } else {
-        // --- キモいギャル魚 (浄化後) ---
-        ctx.shadowBlur = 20; ctx.shadowColor = "#FF00FF";
-        ctx.fillStyle = "#FF69B4"; // どピンク
-        // 体
-        ctx.beginPath(); ctx.ellipse(0, 0, e.width/1.5, e.height/1.5, 0, 0, Math.PI * 2); ctx.fill();
-        // 巨大な唇 (グロス盛り)
+        // --- 宇宙一やかましい「ギャル魚」 ---
+        ctx.shadowBlur = 30; ctx.shadowColor = "#FF00FF";
+        ctx.fillStyle = "#FF69B4";
+        ctx.beginPath(); ctx.ellipse(0, 0, e.width, e.height, 0, 0, Math.PI * 2); ctx.fill();
+        // デカすぎるリボン
+        ctx.fillStyle = "#FF00FF";
+        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(30, -60); ctx.lineTo(30, 0); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(-30, -60); ctx.lineTo(-30, 0); ctx.fill();
+        // ぷるぷるすぎる唇
         ctx.fillStyle = "#FF1493";
-        ctx.beginPath(); ctx.ellipse(-30, 10, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(-25, 8, 5, 2, 0, 0, Math.PI * 2); ctx.fill(); // テカリ
-        // つけまつげ付きの目
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(-20, -10, 12, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#00FFFF"; ctx.beginPath(); ctx.arc(-20, -10, 6, 0, Math.PI * 2); ctx.fill(); // カラーコンタクト
-        // つけま（線で描く）
-        ctx.strokeStyle = "black"; ctx.lineWidth = 3;
-        for(let i=0; i<3; i++) {
-            ctx.beginPath(); ctx.moveTo(-25 + i*5, -20); ctx.lineTo(-30 + i*5, -35); ctx.stroke();
-        }
+        ctx.beginPath(); ctx.ellipse(-40, 15, 25, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(-35, 10, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+        // ギャルな目
+        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(-25, -15, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#00FFFF"; ctx.beginPath(); ctx.arc(-25, -15, 8, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -124,48 +138,52 @@ function drawFish(e) {
 function updateEnemies() {
     for (let i = enemies.length - 1; i >= 0; i--) {
         let e = enemies[i];
-
         if (e.status === 'normal') {
             e.x -= e.speed;
-            
-            // 当たり判定 (弾 vs 敵)
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 50) {
+                if (Math.hypot(b.x - e.x, b.y - e.y) < 60) {
                     e.status = 'purified';
                     score += 10;
-                    paintTrails.push({ x: e.x, y: e.y, radius: 100 });
+                    paintTrails.push({ x: e.x, y: e.y, radius: 150 });
                 }
             });
-
-            // 当たり判定 (プレイヤー vs 敵) -> ゲームオーバー
-            if (Math.hypot(player.x - e.x, player.y - e.y) < 40) {
+            if (Math.hypot(player.x - e.x, player.y - e.y) < 50) {
                 isGameOver = true;
+                body.classList.add('show-cursor'); // カーソルを復活させる
                 document.getElementById('gameOver').style.display = 'block';
             }
         } else {
-            // 浄化後の動き (斜め上に高速で去る)
-            e.x += 10; e.y -= 15;
+            e.x += 12; e.y -= 12;
             e.timer++;
-            // キラキラを出す
-            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 20 });
+            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 30 });
         }
-
         drawFish(e);
         if (e.x < -200 || e.y < -200 || e.x > canvas.width + 500) enemies.splice(i, 1);
     }
 }
 
 function updateBullets() {
-    bullets.forEach((b) => {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
         b.x += b.speed;
+        b.life--; // 寿命を減らす
+
+        // 弾の軌跡
         paintTrails.push({ x: b.x, y: b.y, radius: b.size });
+
+        // 描画 (寿命が尽きそうになると透明になる)
         ctx.save();
+        ctx.globalAlpha = b.life / 50;
         ctx.shadowBlur = 15; ctx.shadowColor = '#FF00FF';
         ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
         ctx.beginPath(); ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
-    });
-    bullets = bullets.filter(b => b.x < canvas.width + 50);
+
+        // 寿命が尽きたら消す
+        if (b.life <= 0 || b.x > canvas.width + 50) {
+            bullets.splice(i, 1);
+        }
+    }
 }
 
 function drawPlayer() {
@@ -181,10 +199,8 @@ function drawPlayer() {
 
 function gameLoop() {
     if (isGameOver) return;
-    
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     drawStars();
     drawPaintedArea(Date.now() / 20);
     spawnEnemy();
@@ -192,10 +208,8 @@ function gameLoop() {
     player.y += (mouseY - player.y) * 0.1;
     updateBullets();
     drawPlayer();
-
     ctx.fillStyle = "white"; ctx.font = "bold 24px Arial";
     ctx.fillText(`PURIFIED: ${score}`, 20, 50);
-
     requestAnimationFrame(gameLoop);
 }
 gameLoop();

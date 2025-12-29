@@ -3,37 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Cosmic Lipstick - Kusoge Ver.</title>
+<title>Cosmic Lipstick - Toxic Kawaii</title>
 <style>
+    /* 基本設定 */
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: auto; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; touch-action: none; }
     canvas { display: block; }
     
-    /* 絶望のゲームオーバー画面 */
+    /* 【NEW】可愛くて見やすいゲームオーバー画面 */
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: #ff0000; text-align: center; background: rgba(0,0,0,0.95); padding: 40px; 
-        border: 2px solid #333; z-index: 100; width: 90%; box-sizing: border-box;
+        /* 背景をピンク紫グラデーションに */
+        background: linear-gradient(135deg, rgba(50,0,50,0.95), rgba(20,0,20,0.98));
+        color: #FFFFFF; text-align: center; padding: 40px; 
+        /* ネオンピンクの可愛い枠線 */
+        border: 4px solid #FF69B4; border-radius: 25px;
+        box-shadow: 0 0 30px rgba(255, 105, 180, 0.6);
+        z-index: 100; width: 85%; box-sizing: border-box;
     }
-    #gameOver h1 { font-size: 30px; margin-bottom: 15px; letter-spacing: 5px; }
-    #gameOver p { font-size: 18px; margin-bottom: 25px; color: #ff0000; font-weight: bold; }
+    #gameOver h1 { 
+        font-size: 32px; margin-bottom: 15px; letter-spacing: 2px; color: #FF69B4;
+        text-shadow: 0 0 10px #FF69B4; /* キラキラ文字 */
+    }
+    #gameOver p { 
+        font-size: 20px; margin-bottom: 30px; color: #FFFFFF; font-weight: bold; line-height: 1.5;
+    }
+    /* 可愛いリトライボタン */
+    button { 
+        padding: 12px 40px; font-size: 18px; 
+        background: #FF69B4; color: white; border: none; border-radius: 50px;
+        cursor: pointer; font-weight: bold; box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+        transition: transform 0.1s;
+    }
+    button:active { transform: scale(0.95); }
 
+    /* フィーバー表示 */
     #feverMode {
         display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
         color: #FF00FF; font-size: 32px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
-        animation: blink 0.1s infinite; z-index: 50; 
+        animation: blink 0.1s infinite; z-index: 50; white-space: nowrap;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-    
-    button { padding: 10px 40px; font-size: 16px; background: #333; color: #ff0000; border: 1px solid #ff0000; cursor: pointer; }
 </style>
 </head>
 <body id="mainBody">
 
 <div id="feverMode">⚠️ MIRACLE FEVER (LUCKY YOU) ⚠️</div>
 <div id="gameOver">
-    <h1>GAME OVER</h1>
+    <h1>🎀 GAME OVER 🎀</h1>
     <p id="deathMessage">一生カサカサしてなｗ</p>
-    <button onclick="location.reload()">RETRY?</button>
+    <button onclick="location.reload()">RETRY ✨</button>
 </div>
 <canvas id="gameCanvas"></canvas>
 
@@ -62,7 +80,7 @@ let isFever = false;
 let feverTimer = 0;
 let lastFeverScore = 0;
 
-// ネガティブ・毒舌メッセージ
+// 辛辣なメッセージはそのまま維持
 const toxicMessages = [
     "一生カサカサしてなｗ",
     "センスなさすぎ。やめたら？",
@@ -113,15 +131,14 @@ function fireGlitter() {
 }
 
 function spawnEnemy() {
-    // スコアが上がるほど出現しやすくする（クソゲー化）
     let spawnRate = 0.04 + (score / 10000);
     if (Math.random() < spawnRate) {
         let ex, ey;
         if (isPortrait) { ex = Math.random() * (canvas.width / gameScale); ey = -100; }
         else { ex = VIRTUAL_WIDTH + 100; ey = Math.random() * (canvas.height / gameScale); }
-        // スコアに応じてバケモノのスピードを上げる
         let baseSpeed = 4 + (score / 200);
-        enemies.push({ x: ex, y: ey, width: 115, height: 115, speed: baseSpeed + Math.random() * 3, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
+        // 【NEW】バケモノのサイズを少し小さく(115 -> 90)
+        enemies.push({ x: ex, y: ey, width: 90, height: 90, speed: baseSpeed + Math.random() * 3, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
     }
 }
 
@@ -133,8 +150,8 @@ function drawFish(e) {
     if (e.status === 'normal') {
         if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
-        ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, 40, 30, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#FF69B4"; // 浄化時のエフェクトも少し小さく
+        ctx.beginPath(); ctx.ellipse(0, 0, 35, 25, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -145,10 +162,11 @@ function updateEnemies() {
         if (e.status === 'normal') {
             if (isPortrait) e.y += e.speed; else e.x -= e.speed;
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) { e.status = 'purified'; score += 10; }
+                // 当たり判定もサイズに合わせて少し小さく
+                if (Math.hypot(b.x - e.x, b.y - e.y) < 55) { e.status = 'purified'; score += 10; }
             });
             
-            const isCollided = Math.hypot(player.x - e.x, player.y - e.y) < 60;
+            const isCollided = Math.hypot(player.x - e.x, player.y - e.y) < 50;
             const isPassedPC = !isPortrait && e.x < player.x - 50;
             const isPassedMobile = isPortrait && e.y > player.y + 50;
 
@@ -197,7 +215,6 @@ function gameLoop() {
     ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
 
-    // フィーバー判定 (500ptごとにして難易度アップ)
     if (score > 0 && score % 500 === 0 && score !== lastFeverScore) {
         isFever = true; feverTimer = 180; lastFeverScore = score; feverUI.style.display = 'block';
     }

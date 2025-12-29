@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick Prototype v0.2</title>
+<title>Cosmic Lipstick Phase 2</title>
 <style>
-    body { margin: 0; overflow: hidden; background-color: #110011; cursor: none; }
+    body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; }
     canvas { display: block; }
 </style>
 </head>
@@ -15,119 +15,94 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- プレイヤー設定 ---
-let player = {
-    x: 100, y: canvas.height / 2, width: 60, height: 30, // サイズを横長に
-    colorBody: '#FF69B4', // 本体（ホットピンク）
-    colorTip: '#FF1493'   // 先端（濃いピンク）
-};
+// --- プレイヤー & 弾 ---
+let player = { x: 100, y: canvas.height / 2, width: 60, height: 30, colorBody: '#FF69B4', colorTip: '#FF1493' };
 let mouseY = canvas.height / 2;
+let bullets = [];
 
-// --- 弾の設定 ---
-let bullets = []; // 発射された弾を入れる配列
+// --- 🌟 星空の設定 (Phase 2 追加) ---
+let stars = [];
+const starCount = 150;
+for (let i = 0; i < starCount; i++) {
+    stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 1.5,
+        opacity: Math.random(),
+        twinkleSpeed: 0.02 + Math.random() * 0.05 // 光る速さ
+    });
+}
 
 // --- イベントリスナー ---
 window.addEventListener('mousemove', (e) => { mouseY = e.clientY; });
-window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
-// クリックで弾を発射！
-window.addEventListener('mousedown', (e) => {
-    bullets.push({
-        x: player.x + player.width / 2, // 口紅の先端から発射
-        y: player.y,
-        speed: 15,
-        size: 20 + Math.random() * 10 // サイズを少しランダムに
-    });
+window.addEventListener('mousedown', () => {
+    bullets.push({ x: player.x + player.width/2, y: player.y, speed: 18, size: 25 });
 });
 
-// --- 描画関数たち ---
+// --- 描画関数 ---
 
-// 口紅ロケットを描く関数
+// 星を描く (モノクロ・キラキラ)
+function drawStars() {
+    ctx.fillStyle = "white";
+    stars.forEach(s => {
+        // 星をチカチカさせる計算
+        s.opacity += s.twinkleSpeed;
+        if (s.opacity > 1 || s.opacity < 0) s.twinkleSpeed *= -1;
+        
+        ctx.globalAlpha = Math.abs(s.opacity); // 透明度を変える
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0; // 透明度を戻す
+}
+
 function drawPlayer() {
     ctx.save();
-    ctx.translate(player.x, player.y); // プレイヤーの中心を基準にする
-
-    // 発光エフェクト
+    ctx.translate(player.x, player.y);
     ctx.shadowBlur = 20; ctx.shadowColor = player.colorBody;
-
-    // 1. 本体（筒の部分）
     ctx.fillStyle = player.colorBody;
-    // 角丸の四角形を描く（それっぽく見せるため）
     ctx.beginPath();
     ctx.roundRect(-player.width/2, -player.height/2, player.width*0.7, player.height, [5, 0, 0, 5]);
     ctx.fill();
-
-    // 2. 先端（口紅の部分）
     ctx.fillStyle = player.colorTip;
     ctx.beginPath();
-    // 斜めにカットされたような形を描く
     ctx.moveTo(player.width*0.2, -player.height/2 + 5);
     ctx.lineTo(player.width/2, -player.height/4);
     ctx.lineTo(player.width/2, player.height/4);
     ctx.lineTo(player.width*0.2, player.height/2 - 5);
     ctx.closePath();
     ctx.fill();
-    
-    // 3. エンジンの噴射（おまけ）
-    ctx.shadowBlur = 30; ctx.shadowColor = '#00FFFF'; // 青白い光
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(-player.width/2, 0, 8 + Math.random()*4, 0, Math.PI * 2);
-    ctx.fill();
-
     ctx.restore();
 }
 
-// 弾（色の波）を描く関数
 function drawBullets() {
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        b.x += b.speed; // 弾を右に進める
-
+    bullets.forEach((b, i) => {
+        b.x += b.speed;
         ctx.save();
-        // 弾の発光エフェクト
-        ctx.shadowBlur = b.size; ctx.shadowColor = '#FF00FF';
-        ctx.fillStyle = 'rgba(255, 105, 180, 0.8)'; // 少し透明なピンク
-        
-        // ただの丸ではなく、「波」っぽく横長に描く
+        ctx.shadowBlur = 15; ctx.shadowColor = '#FF00FF';
+        ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
         ctx.beginPath();
-        ctx.ellipse(b.x, b.y, b.size, b.size/2, 0, 0, Math.PI * 2);
+        ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-
-        // 画面外に出た弾を消す（メモリ節約）
-        if (b.x > canvas.width + b.size) {
-            bullets.splice(i, 1);
-        }
-    }
+    });
+    bullets = bullets.filter(b => b.x < canvas.width + 50); // 画面外の弾を削除
 }
 
-
-// --- ゲームループ ---
-let time = 0;
+// --- メインループ ---
 function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 1. 背景（前回のまま）
-    time += 0.05;
-    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
-    const intensity = Math.sin(time) * 20 + 30;
-    gradient.addColorStop(0, `hsl(300, 100%, ${intensity}%)`);
-    gradient.addColorStop(1, '#110011');
-    ctx.fillStyle = gradient;
+    // 背景を真っ黒に塗る
+    ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. プレイヤーの位置更新
+    drawStars();   // 1. キラキラの星を描く
     player.y += (mouseY - player.y) * 0.1;
-
-    // 3. 弾の更新と描画
-    drawBullets();
-
-    // 4. プレイヤーの描画
-    drawPlayer();
+    drawBullets(); // 2. 弾を描く
+    drawPlayer();  // 3. 自機を描く
 
     requestAnimationFrame(gameLoop);
 }

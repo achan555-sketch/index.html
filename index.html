@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick Phase 2</title>
+<title>Cosmic Lipstick - Final Phase</title>
 <style>
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; }
     canvas { display: block; }
@@ -18,38 +18,69 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+// --- プレイヤー & 弾 ---
 let player = { x: 100, y: canvas.height / 2, width: 60, height: 30, colorBody: '#FF69B4', colorTip: '#FF1493' };
 let mouseY = canvas.height / 2;
 let bullets = [];
 
-// 星空の設定
+// --- 🎨 塗り替えシステム (Phase 3 追加) ---
+let paintTrails = []; // 塗られた場所の座標を保存する配列
+
+// --- 🌟 星空の設定 ---
 let stars = [];
 for (let i = 0; i < 150; i++) {
     stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 1.5,
-        opacity: Math.random(),
-        twinkleSpeed: 0.02 + Math.random() * 0.05
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+        size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05
     });
 }
 
+// --- イベントリスナー ---
 window.addEventListener('mousemove', (e) => { mouseY = e.clientY; });
 window.addEventListener('mousedown', () => {
-    bullets.push({ x: player.x + player.width/2, y: player.y, speed: 18, size: 25 });
+    bullets.push({ x: player.x + player.width/2, y: player.y, speed: 20, size: 30 });
 });
 
+// --- 描画関数 ---
+
+// 1. モノクロの星空を描く
 function drawStars() {
     ctx.fillStyle = "white";
     stars.forEach(s => {
         s.opacity += s.twinkleSpeed;
         if (s.opacity > 1 || s.opacity < 0) s.twinkleSpeed *= -1;
         ctx.globalAlpha = Math.abs(s.opacity);
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
     });
     ctx.globalAlpha = 1.0;
+}
+
+// 2. 塗られたピンクの場所を描く (ここが魔法！)
+function drawPaintedArea(time) {
+    if (paintTrails.length === 0) return;
+
+    ctx.save();
+    
+    // クリッピング：これ以降の描画は、ここで指定した円の中にしか表示されない
+    ctx.beginPath();
+    paintTrails.forEach(p => {
+        ctx.moveTo(p.x, p.y);
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    });
+    ctx.clip();
+
+    // --- この中だけ「ネオンピンクの世界（Phase 0.1）」を再現 ---
+    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
+    const intensity = Math.sin(time * 0.05) * 20 + 40;
+    gradient.addColorStop(0, `hsl(300, 100%, ${intensity}%)`);
+    gradient.addColorStop(1, '#220022');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 塗りつぶした場所のフチを少し光らせる
+    ctx.shadowBlur = 15; ctx.shadowColor = "#FF00FF";
+    
+    ctx.restore();
 }
 
 function drawPlayer() {
@@ -57,43 +88,45 @@ function drawPlayer() {
     ctx.translate(player.x, player.y);
     ctx.shadowBlur = 20; ctx.shadowColor = player.colorBody;
     ctx.fillStyle = player.colorBody;
-    ctx.beginPath();
-    ctx.roundRect(-player.width/2, -player.height/2, player.width*0.7, player.height, [5, 0, 0, 5]);
-    ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-player.width/2, -player.height/2, player.width*0.7, player.height, [5, 0, 0, 5]); ctx.fill();
     ctx.fillStyle = player.colorTip;
-    ctx.beginPath();
-    ctx.moveTo(player.width*0.2, -player.height/2 + 5);
-    ctx.lineTo(player.width/2, -player.height/4);
-    ctx.lineTo(player.width/2, player.height/4);
-    ctx.lineTo(player.width*0.2, player.height/2 - 5);
-    ctx.closePath();
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(player.width*0.2, -player.height/2 + 5); ctx.lineTo(player.width/2, -player.height/4); ctx.lineTo(player.width/2, player.height/4); ctx.lineTo(player.width*0.2, player.height/2 - 5); ctx.closePath(); ctx.fill();
     ctx.restore();
 }
 
-function drawBullets() {
+function updateBullets() {
     bullets.forEach((b, i) => {
         b.x += b.speed;
+        // 弾が通った場所に「塗られたポイント」を追加
+        paintTrails.push({ x: b.x, y: b.y, radius: b.size });
+        
         ctx.save();
         ctx.shadowBlur = 15; ctx.shadowColor = '#FF00FF';
         ctx.fillStyle = 'rgba(255, 20, 147, 0.9)';
-        ctx.beginPath();
-        ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.ellipse(b.x, b.y, b.size, b.size/3, 0, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
     });
     bullets = bullets.filter(b => b.x < canvas.width + 50);
 }
 
+// --- メインループ ---
+let frameTime = 0;
 function gameLoop() {
+    frameTime++;
+    // 背景（モノクロ）
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawStars();
+
+    drawStars();                // 1. 普通の星空を描く
+    drawPaintedArea(frameTime); // 2. 塗られた場所だけネオンにする (魔法！)
+    
     player.y += (mouseY - player.y) * 0.1;
-    drawBullets();
-    drawPlayer();
+    updateBullets();            // 3. 弾を動かし、軌跡を記録
+    drawPlayer();               // 4. 自機
+    
     requestAnimationFrame(gameLoop);
 }
+
 gameLoop();
 </script>
 </body>

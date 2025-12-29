@@ -3,31 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Cosmic Lipstick - Final Cute Ver.</title>
+<title>Cosmic Lipstick - Ultimate</title>
 <style>
-    /* スマホでのスクロールやズームを防止 */
+    /* 全体のスタイル設定 */
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; touch-action: none; }
     canvas { display: block; }
+    
+    /* ゲームオーバー画面 */
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
         color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
         border: 10px double #FF00FF; z-index: 100; width: 80%; box-sizing: border-box;
     }
+    
+    /* フィーバー演出の文字 */
     #feverMode {
-        display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-        color: #FF00FF; font-size: 30px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
+        display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+        color: #FF00FF; font-size: 32px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
         animation: blink 0.2s infinite; z-index: 50; white-space: nowrap;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-    button { padding: 10px 20px; font-size: 20px; background: #FF00FF; color: white; border: none; cursor: pointer; font-weight: bold; }
-    .show-cursor { cursor: auto !important; }
+    
+    button { padding: 12px 24px; font-size: 20px; background: #FF00FF; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
 </style>
 </head>
 <body id="mainBody">
+
 <div id="feverMode">✨ GLITTER FEVER ✨</div>
 <div id="gameOver">
     <h1>💀 DRY & DEAD 💀</h1>
-    <p>潤いが足りないわ...</p>
+    <p>バケモノに潤いを奪われた...</p>
     <button onclick="location.reload()">RETRY</button>
 </div>
 <canvas id="gameCanvas"></canvas>
@@ -35,29 +40,21 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const body = document.getElementById('mainBody');
 const feverUI = document.getElementById('feverMode');
 
-// キャンバスサイズをウィンドウに合わせる関数
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+// --- 設定と画像 ---
+let isPortrait = false; 
+let gameScale = 1;
+const VIRTUAL_WIDTH = 800; // 横モードの基準幅
 
-// --- 画像の読み込み ---
-// 敵の画像 (GitHubのファイル名と完全に一致させる！)
 const enemyImg = new Image();
 enemyImg.src = 'unnamed__1_-removebg-preview.png'; 
-
-// 【NEW】プレイヤー(リップ)の画像
-// ※ GitHubに 'player.png' をアップロードしてください！
 const playerImg = new Image();
 playerImg.src = 'player.png'; 
 
-let player = { x: 80, y: canvas.height / 2, width: 100, height: 50 }; // 画像に合わせて少し大きく
-let targetY = canvas.height / 2;
+// --- ゲーム状態 ---
+let player = { x: 0, y: 0, width: 90, height: 45 };
+let targetPos = { x: 0, y: 0 };
 let bullets = [];
 let paintTrails = [];
 let stars = [];
@@ -68,91 +65,97 @@ let isFever = false;
 let feverTimer = 0;
 let lastFeverScore = 0;
 
-// 星の生成
-for (let i = 0; i < 150; i++) {
-    stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05 });
+// キャンバスリサイズ & 縦横判定
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    isPortrait = canvas.height > canvas.width; 
+    
+    if (isPortrait) {
+        // スマホ(縦)モード
+        gameScale = canvas.width / 450; 
+        player.x = 225; 
+        player.y = (canvas.height / gameScale) - 100;
+    } else {
+        // PC(横)モード
+        gameScale = canvas.width / VIRTUAL_WIDTH;
+        player.x = 100;
+        player.y = (canvas.height / gameScale) / 2;
+    }
+    targetPos.x = player.x;
+    targetPos.y = player.y;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// 星の背景作成
+for (let i = 0; i < 100; i++) {
+    stars.push({ x: Math.random() * 1000, y: Math.random() * 1500, size: Math.random() * 2, opacity: Math.random() });
 }
 
-// --- 操作イベント (PC & スマホ対応) ---
-window.addEventListener('mousemove', (e) => { if(!isGameOver) targetY = e.clientY; });
-window.addEventListener('mousedown', (e) => {
-    if(!isGameOver && !isFever && e.target === canvas) fireGlitter();
-});
+// --- 操作イベント ---
+const updateTarget = (x, y) => {
+    if (isPortrait) {
+        targetPos.x = x / gameScale; 
+    } else {
+        targetPos.y = y / gameScale;
+    }
+};
 
-// スマホ用タッチイベント
+window.addEventListener('mousemove', (e) => { if(!isGameOver) updateTarget(e.clientX, e.clientY); });
+window.addEventListener('mousedown', (e) => { if(!isGameOver && !isFever) fireGlitter(); });
+
 canvas.addEventListener('touchstart', (e) => {
     if(!isGameOver) {
-        targetY = e.touches[0].clientY;
+        updateTarget(e.touches[0].clientX, e.touches[0].clientY);
         if (!isFever) fireGlitter();
     }
     e.preventDefault();
 }, { passive: false });
 
 canvas.addEventListener('touchmove', (e) => {
-    if(!isGameOver) targetY = e.touches[0].clientY;
+    if(!isGameOver) updateTarget(e.touches[0].clientX, e.touches[0].clientY);
     e.preventDefault();
 }, { passive: false });
 
-
 function fireGlitter() {
-    bullets.push({ x: player.x + 40, y: player.y, speed: 18, size: 25, life: 60 });
+    bullets.push({
+        x: player.x, y: player.y,
+        vx: isPortrait ? 0 : 20,
+        vy: isPortrait ? -20 : 0,
+        size: 30, life: 50
+    });
 }
 
 function spawnEnemy() {
-    if (Math.random() < 0.03) {
-        // スマホだと画面が狭いので敵を少し小さめに調整
-        const size = window.innerWidth < 600 ? 80 : 120;
-        enemies.push({
-            x: canvas.width + 100, y: Math.random() * canvas.height,
-            width: size, height: size, speed: 2.5 + Math.random() * 4,
-            status: 'normal', timer: 0, wiggle: Math.random() * Math.PI 
-        });
+    if (Math.random() < 0.04) {
+        let ex, ey;
+        if (isPortrait) {
+            ex = Math.random() * (canvas.width / gameScale);
+            ey = -100; 
+        } else {
+            ex = VIRTUAL_WIDTH + 100; 
+            ey = Math.random() * (canvas.height / gameScale);
+        }
+        enemies.push({ x: ex, y: ey, width: 110, height: 110, speed: 3 + Math.random() * 4, status: 'normal', timer: 0, wiggle: Math.random() * Math.PI });
     }
-}
-
-function drawStars() {
-    ctx.fillStyle = "white";
-    stars.forEach(s => {
-        s.opacity += s.twinkleSpeed;
-        if (s.opacity > 1 || s.opacity < 0) s.twinkleSpeed *= -1;
-        ctx.globalAlpha = Math.abs(s.opacity);
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.globalAlpha = 1.0;
-}
-
-function drawPaintedArea(time) {
-    ctx.save();
-    ctx.beginPath();
-    paintTrails.forEach(p => { ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); });
-    ctx.clip();
-    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
-    const hue = isFever ? 320 : 300;
-    gradient.addColorStop(0, `hsl(${hue}, 100%, ${Math.sin(time * 0.05) * 20 + 60}%)`);
-    gradient.addColorStop(1, '#110011');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
 }
 
 function drawFish(e) {
     ctx.save();
     ctx.translate(e.x, e.y);
-    const wiggleY = Math.sin(Date.now() * 0.008 + e.wiggle) * 15;
-    ctx.translate(0, wiggleY);
+    const wiggle = Math.sin(Date.now() * 0.008 + e.wiggle) * 15;
+    if (isPortrait) ctx.translate(wiggle, 0); else ctx.translate(0, wiggle);
+    
     if (e.status === 'normal') {
         if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
-        // 浄化後のギャル魚も少し小さめに調整
-        const scale = e.width / 120;
-        ctx.shadowBlur = 40; ctx.shadowColor = "#FF00FF";
+        // 浄化したギャル魚
+        ctx.shadowBlur = 30; ctx.shadowColor = "#FF00FF";
         ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, 70*scale, 50*scale, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#FF00FF";
-        ctx.beginPath(); ctx.moveTo(0, -35*scale); ctx.lineTo(35*scale, -70*scale); ctx.lineTo(35*scale, 5*scale); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, -35*scale); ctx.lineTo(-35*scale, -70*scale); ctx.lineTo(-35*scale, 5*scale); ctx.fill();
-        ctx.fillStyle = "#FF1493"; 
-        ctx.beginPath(); ctx.ellipse(-50*scale, 20*scale, 30*scale, 15*scale, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 0, 50, 40, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#FF1493"; // リップ
+        ctx.beginPath(); ctx.ellipse(-30, 10, 20, 10, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -161,172 +164,106 @@ function updateEnemies() {
     for (let i = enemies.length - 1; i >= 0; i--) {
         let e = enemies[i];
         if (e.status === 'normal') {
-            e.x -= e.speed;
+            if (isPortrait) e.y += e.speed; else e.x -= e.speed;
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < e.width/1.8) {
-                    e.status = 'purified';
-                    score += 10;
-                    paintTrails.push({ x: e.x, y: e.y, radius: 250 });
+                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) {
+                    e.status = 'purified'; score += 10;
+                    paintTrails.push({ x: e.x, y: e.y, radius: 200 });
                 }
             });
-            if (Math.hypot(player.x - e.x, player.y - e.y) < e.width/2) {
-                isGameOver = true;
-                body.classList.add('show-cursor');
-                document.getElementById('gameOver').style.display = 'block';
+            if (Math.hypot(player.x - e.x, player.y - e.y) < 60) {
+                isGameOver = true; document.getElementById('gameOver').style.display = 'block';
             }
         } else {
-            e.x += 20; e.y -= 20; e.timer++;
-            if(e.timer % 2 === 0) paintTrails.push({ x: e.x, y: e.y, radius: 50 });
+            e.y -= 20; e.x += 20; // 浄化されて昇天
         }
         drawFish(e);
-        if (e.x < -300 || e.y < -300 || e.x > canvas.width + 500) enemies.splice(i, 1);
+        if (e.x < -400 || e.y > 2000 || e.y < -500) enemies.splice(i, 1);
     }
 }
 
 function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
-        b.x += b.speed; b.life--;
+        b.x += b.vx; b.y += b.vy; b.life--;
         ctx.save();
-        ctx.shadowBlur = 15; ctx.shadowColor = '#FFB6C1';
-        for(let j=0; j<5; j++) {
+        ctx.shadowBlur = 15; ctx.shadowColor = '#FF69B4';
+        for(let j=0; j<6; j++) {
             ctx.fillStyle = j % 2 === 0 ? '#FF69B4' : '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30, Math.random()*4, 0, Math.PI*2);
+            ctx.beginPath(); 
+            ctx.arc(b.x + (Math.random()-0.5)*40, b.y + (Math.random()-0.5)*40, Math.random()*5, 0, Math.PI*2); 
             ctx.fill();
         }
         ctx.restore();
         paintTrails.push({ x: b.x, y: b.y, radius: b.size });
-        if (b.life <= 0 || b.x > canvas.width + 50) bullets.splice(i, 1);
+        if (b.life <= 0) bullets.splice(i, 1);
     }
 }
 
 function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
+    if (isPortrait) ctx.rotate(-Math.PI / 2); // 縦モードなら上を向く
     
-    // 【NEW】画像が読み込まれていたら画像を表示！
     if (playerImg.complete) {
         ctx.shadowBlur = 30; ctx.shadowColor = '#FF69B4';
-        // 画像を中心に描画
         ctx.drawImage(playerImg, -player.width/2, -player.height/2, player.width, player.height);
     } else {
-        // 画像がない時の仮の姿（ピンクの四角）
-        ctx.fillStyle = '#FF69B4';
-        ctx.fillRect(-40, -20, 80, 40);
+        // 画像がない時のバックアップ
+        ctx.fillStyle = '#FF69B4'; ctx.fillRect(-40, -20, 80, 40);
     }
     ctx.restore();
 }
 
 function gameLoop() {
     if (isGameOver) return;
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
+
+    // フィーバー判定 (100ptごと)
     if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
-        isFever = true;
-        feverTimer = 300;
-        lastFeverScore = score;
-        feverUI.style.display = 'block';
+        isFever = true; feverTimer = 250; lastFeverScore = score; feverUI.style.display = 'block';
     }
-
     if (isFever) {
-        feverTimer--;
-        if (feverTimer % 5 === 0) fireGlitter();
-        if (feverTimer <= 0) {
-            isFever = false;
-            feverUI.style.display = 'none';
-        }
+        feverTimer--; 
+        if (feverTimer % 4 === 0) fireGlitter();
+        if (feverTimer <= 0) { isFever = false; feverUI.style.display = 'none'; }
     }
 
-    drawStars();
-    drawPaintedArea(Date.now() / 20);
+    // 星の描画
+    ctx.fillStyle = "white";
+    stars.forEach(s => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha = 1.0;
+
+    // 塗りつぶしエフェクト
+    ctx.save();
+    ctx.beginPath();
+    paintTrails.forEach(p => { ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); });
+    ctx.clip();
+    ctx.fillStyle = isFever ? '#330033' : '#110011';
+    ctx.fillRect(0, 0, 2000, 2000);
+    ctx.restore();
+
     spawnEnemy();
     updateEnemies();
-    // プレイヤー位置の滑らかな更新
-    player.y += (targetY - player.y) * 0.2;
+    
+    // スムーズな移動
+    player.x += (targetPos.x - player.x) * 0.2;
+    player.y += (targetPos.y - player.y) * 0.2;
+    
     updateBullets();
     drawPlayer();
     
-    ctx.fillStyle = "#FF00FF"; ctx.font = "bold 28px Arial";
-    ctx.fillText(`PURIFIED: ${score}`, 20, 50);
+    // スコア表示
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#FF00FF"; ctx.font = "bold 24px Arial";
+    ctx.fillText(`PURIFIED: ${score}`, 20, 40);
+    
     requestAnimationFrame(gameLoop);
 }
 gameLoop();
 </script>
 </body>
 </html>
-
-// --- スケーリングの設定 ---
-let gameScale = 1;
-const VIRTUAL_WIDTH = 800; // 仮想的な横幅（これを基準にすると魚が遠くから来る）
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    
-    // スマホの横幅に合わせて倍率を計算
-    gameScale = canvas.width / VIRTUAL_WIDTH;
-    
-    // プレイヤーの初期位置を調整
-    player.x = 80 * gameScale;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-// --- 描画関数をスケーリング対応に修正 ---
-function gameLoop() {
-    if (isGameOver) return;
-
-    // 画面をクリアして、全体にスケーリングをかける
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // リセット
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // ここから下の描画に gameScale を適用する
-    ctx.setTransform(gameScale, 0, 0, gameScale, 0, 0);
-
-    // --- ボーナスタイム等のロジック (変更なし) ---
-    if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
-        isFever = true;
-        feverTimer = 300;
-        lastFeverScore = score;
-        feverUI.style.display = 'block';
-    }
-    if (isFever) {
-        feverTimer--;
-        if (feverTimer % 5 === 0) fireGlitter();
-        if (feverTimer <= 0) { isFever = false; feverUI.style.display = 'none'; }
-    }
-
-    drawStars();
-    drawPaintedArea(Date.now() / 20);
-    spawnEnemy();
-    updateEnemies();
-    
-    // マウス/タッチ位置もスケーリングに合わせて計算
-    const targetYInGame = targetY / gameScale;
-    player.y += (targetYInGame - player.y) * 0.2;
-
-    updateBullets();
-    drawPlayer();
-    
-    // スコアだけは画面の端っこ（スケーリング外）に描画
-    ctx.setTransform(1, 0, 0, 1, 0, 0); 
-    ctx.fillStyle = "#FF00FF"; ctx.font = "bold 28px Arial";
-    ctx.fillText(`PURIFIED: ${score}`, 20, 50);
-    
-    requestAnimationFrame(gameLoop);
-}
-
-// 敵の出現位置も VIRTUAL_WIDTH に合わせる
-function spawnEnemy() {
-    if (Math.random() < 0.03) {
-        enemies.push({
-            x: VIRTUAL_WIDTH + 100, // 画面外の右側
-            y: Math.random() * (canvas.height / gameScale),
-            width: 120, height: 120, speed: 2.5 + Math.random() * 4,
-            status: 'normal', timer: 0, wiggle: Math.random() * Math.PI 
-        });
-    }
-}

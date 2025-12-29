@@ -2,20 +2,21 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmic Lipstick - Glitter Fever</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cosmic Lipstick - Final Cute Ver.</title>
 <style>
-    body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; }
+    /* スマホでのスクロールやズームを防止 */
+    body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; touch-action: none; }
     canvas { display: block; }
     #gameOver {
         display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
         color: #FF00FF; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; 
-        border: 10px double #FF00FF; z-index: 100;
+        border: 10px double #FF00FF; z-index: 100; width: 80%; box-sizing: border-box;
     }
     #feverMode {
         display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-        color: #FF00FF; font-size: 40px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
-        animation: blink 0.2s infinite; z-index: 50;
+        color: #FF00FF; font-size: 30px; font-weight: bold; text-shadow: 0 0 20px #FF00FF;
+        animation: blink 0.2s infinite; z-index: 50; white-space: nowrap;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     button { padding: 10px 20px; font-size: 20px; background: #FF00FF; color: white; border: none; cursor: pointer; font-weight: bold; }
@@ -26,7 +27,7 @@
 <div id="feverMode">✨ GLITTER FEVER ✨</div>
 <div id="gameOver">
     <h1>💀 DRY & DEAD 💀</h1>
-    <p>もっとキラキラが必要...</p>
+    <p>潤いが足りないわ...</p>
     <button onclick="location.reload()">RETRY</button>
 </div>
 <canvas id="gameCanvas"></canvas>
@@ -36,14 +37,27 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const body = document.getElementById('mainBody');
 const feverUI = document.getElementById('feverMode');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 
+// キャンバスサイズをウィンドウに合わせる関数
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// --- 画像の読み込み ---
+// 敵の画像 (GitHubのファイル名と完全に一致させる！)
 const enemyImg = new Image();
 enemyImg.src = 'unnamed__1_-removebg-preview.png'; 
 
-let player = { x: 100, y: canvas.height / 2, width: 80, height: 40 };
-let mouseY = canvas.height / 2;
+// 【NEW】プレイヤー(リップ)の画像
+// ※ GitHubに 'player.png' をアップロードしてください！
+const playerImg = new Image();
+playerImg.src = 'player.png'; 
+
+let player = { x: 80, y: canvas.height / 2, width: 100, height: 50 }; // 画像に合わせて少し大きく
+let targetY = canvas.height / 2;
 let bullets = [];
 let paintTrails = [];
 let stars = [];
@@ -54,24 +68,43 @@ let isFever = false;
 let feverTimer = 0;
 let lastFeverScore = 0;
 
+// 星の生成
 for (let i = 0; i < 150; i++) {
     stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5, opacity: Math.random(), twinkleSpeed: 0.02 + Math.random() * 0.05 });
 }
 
-window.addEventListener('mousemove', (e) => { if(!isGameOver) mouseY = e.clientY; });
-window.addEventListener('mousedown', () => {
-    if(!isGameOver && !isFever) fireGlitter();
+// --- 操作イベント (PC & スマホ対応) ---
+window.addEventListener('mousemove', (e) => { if(!isGameOver) targetY = e.clientY; });
+window.addEventListener('mousedown', (e) => {
+    if(!isGameOver && !isFever && e.target === canvas) fireGlitter();
 });
 
+// スマホ用タッチイベント
+canvas.addEventListener('touchstart', (e) => {
+    if(!isGameOver) {
+        targetY = e.touches[0].clientY;
+        if (!isFever) fireGlitter();
+    }
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    if(!isGameOver) targetY = e.touches[0].clientY;
+    e.preventDefault();
+}, { passive: false });
+
+
 function fireGlitter() {
-    bullets.push({ x: player.x + 30, y: player.y, speed: 18, size: 25, life: 60, particles: [] });
+    bullets.push({ x: player.x + 40, y: player.y, speed: 18, size: 25, life: 60 });
 }
 
 function spawnEnemy() {
     if (Math.random() < 0.03) {
+        // スマホだと画面が狭いので敵を少し小さめに調整
+        const size = window.innerWidth < 600 ? 80 : 120;
         enemies.push({
             x: canvas.width + 100, y: Math.random() * canvas.height,
-            width: 120, height: 120, speed: 2.5 + Math.random() * 4,
+            width: size, height: size, speed: 2.5 + Math.random() * 4,
             status: 'normal', timer: 0, wiggle: Math.random() * Math.PI 
         });
     }
@@ -110,14 +143,16 @@ function drawFish(e) {
     if (e.status === 'normal') {
         if (enemyImg.complete) ctx.drawImage(enemyImg, -e.width/2, -e.height/2, e.width, e.height);
     } else {
+        // 浄化後のギャル魚も少し小さめに調整
+        const scale = e.width / 120;
         ctx.shadowBlur = 40; ctx.shadowColor = "#FF00FF";
         ctx.fillStyle = "#FF69B4";
-        ctx.beginPath(); ctx.ellipse(0, 0, 70, 50, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 0, 70*scale, 50*scale, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#FF00FF";
-        ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(35, -70); ctx.lineTo(35, 5); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(-35, -70); ctx.lineTo(-35, 5); ctx.fill();
-        ctx.fillStyle = "#FF1493"; // リップ
-        ctx.beginPath(); ctx.ellipse(-50, 20, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -35*scale); ctx.lineTo(35*scale, -70*scale); ctx.lineTo(35*scale, 5*scale); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -35*scale); ctx.lineTo(-35*scale, -70*scale); ctx.lineTo(-35*scale, 5*scale); ctx.fill();
+        ctx.fillStyle = "#FF1493"; 
+        ctx.beginPath(); ctx.ellipse(-50*scale, 20*scale, 30*scale, 15*scale, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 }
@@ -128,13 +163,13 @@ function updateEnemies() {
         if (e.status === 'normal') {
             e.x -= e.speed;
             bullets.forEach((b) => {
-                if (Math.hypot(b.x - e.x, b.y - e.y) < 70) {
+                if (Math.hypot(b.x - e.x, b.y - e.y) < e.width/1.8) {
                     e.status = 'purified';
                     score += 10;
                     paintTrails.push({ x: e.x, y: e.y, radius: 250 });
                 }
             });
-            if (Math.hypot(player.x - e.x, player.y - e.y) < 60) {
+            if (Math.hypot(player.x - e.x, player.y - e.y) < e.width/2) {
                 isGameOver = true;
                 body.classList.add('show-cursor');
                 document.getElementById('gameOver').style.display = 'block';
@@ -152,7 +187,6 @@ function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         b.x += b.speed; b.life--;
-        // ラメ粒子を描画
         ctx.save();
         ctx.shadowBlur = 15; ctx.shadowColor = '#FFB6C1';
         for(let j=0; j<5; j++) {
@@ -170,25 +204,17 @@ function updateBullets() {
 function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.shadowBlur = 30; ctx.shadowColor = '#FF69B4';
     
-    // リップの本体 (可愛くデザイン)
-    ctx.fillStyle = '#FF69B4';
-    ctx.beginPath(); ctx.roundRect(-40, -20, 60, 40, [10, 0, 0, 10]); ctx.fill();
-    
-    // ゴールドのライン
-    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3;
-    ctx.strokeRect(-10, -20, 5, 40);
-    
-    // リップの先端 (斜めカット)
-    ctx.fillStyle = '#FF1493';
-    ctx.beginPath(); ctx.moveTo(20, -18); ctx.lineTo(50, -10); ctx.lineTo(50, 10); ctx.lineTo(20, 18); ctx.closePath(); ctx.fill();
-
-    // ハートのチャーム
-    ctx.fillStyle = '#FF00FF';
-    ctx.font = '20px Arial';
-    ctx.fillText('❤︎', -30, 5);
-
+    // 【NEW】画像が読み込まれていたら画像を表示！
+    if (playerImg.complete) {
+        ctx.shadowBlur = 30; ctx.shadowColor = '#FF69B4';
+        // 画像を中心に描画
+        ctx.drawImage(playerImg, -player.width/2, -player.height/2, player.width, player.height);
+    } else {
+        // 画像がない時の仮の姿（ピンクの四角）
+        ctx.fillStyle = '#FF69B4';
+        ctx.fillRect(-40, -20, 80, 40);
+    }
     ctx.restore();
 }
 
@@ -197,17 +223,16 @@ function gameLoop() {
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ボーナスタイムのチェック (100ptごと)
     if (score > 0 && score % 100 === 0 && score !== lastFeverScore) {
         isFever = true;
-        feverTimer = 300; // 5秒間
+        feverTimer = 300;
         lastFeverScore = score;
         feverUI.style.display = 'block';
     }
 
     if (isFever) {
         feverTimer--;
-        if (feverTimer % 5 === 0) fireGlitter(); // 超速連射
+        if (feverTimer % 5 === 0) fireGlitter();
         if (feverTimer <= 0) {
             isFever = false;
             feverUI.style.display = 'none';
@@ -218,7 +243,8 @@ function gameLoop() {
     drawPaintedArea(Date.now() / 20);
     spawnEnemy();
     updateEnemies();
-    player.y += (mouseY - player.y) * 0.1;
+    // プレイヤー位置の滑らかな更新
+    player.y += (targetY - player.y) * 0.2;
     updateBullets();
     drawPlayer();
     
@@ -230,21 +256,3 @@ gameLoop();
 </script>
 </body>
 </html>
-
-// --- タッチ操作の追加 (スマホ用) ---
-canvas.addEventListener('touchstart', (e) => {
-    if(!isGameOver) {
-        const touch = e.touches[0];
-        mouseY = touch.clientY;
-        if (!isFever) fireGlitter(); // タップで発射
-    }
-    e.preventDefault(); // 画面のスクロールを防止
-}, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-    if(!isGameOver) {
-        const touch = e.touches[0];
-        mouseY = touch.clientY; // 指の動きに合わせてリップが動く
-    }
-    e.preventDefault();
-}, { passive: false });

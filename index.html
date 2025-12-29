@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Cosmic Lipstick - Clean Ver.</title>
+<title>Cosmic Lipstick - Thrill Ver.</title>
 <style>
     body { margin: 0; overflow: hidden; background-color: #050505; cursor: none; font-family: 'Arial', sans-serif; touch-action: none; }
     canvas { display: block; }
@@ -26,7 +26,7 @@
 <div id="feverMode">✨ GLITTER FEVER ✨</div>
 <div id="gameOver">
     <h1>💀 DRY & DEAD 💀</h1>
-    <p>バケモノに潤いを奪われた...</p>
+    <p>バケモノに侵入された！</p>
     <button onclick="location.reload()">RETRY</button>
 </div>
 <canvas id="gameCanvas"></canvas>
@@ -148,14 +148,25 @@ function updateEnemies() {
                     e.status = 'purified'; score += 10;
                 }
             });
-            if (Math.hypot(player.x - e.x, player.y - e.y) < 60) {
-                isGameOver = true; document.getElementById('gameOver').style.display = 'block';
+            
+            // --- 新しいゲームオーバー判定 ---
+            // 1. 接触したか？
+            const isCollided = Math.hypot(player.x - e.x, player.y - e.y) < 60;
+            // 2. PC版(横): リップより左に行ったか？
+            const isPassedPC = !isPortrait && e.x < player.x - 40;
+            // 3. スマホ版(縦): リップより下に行ったか？
+            const isPassedMobile = isPortrait && e.y > player.y + 40;
+
+            if (isCollided || isPassedPC || isPassedMobile) {
+                isGameOver = true; 
+                document.getElementById('gameOver').style.display = 'block';
             }
         } else {
             e.y -= 20; e.x += 20;
         }
         drawFish(e);
-        if (e.x < -400 || e.y > 2000 || e.y < -500) enemies.splice(i, 1);
+        // 画面外判定も少し広めに
+        if (e.x < -500 || e.y > 2500 || e.y < -600) enemies.splice(i, 1);
     }
 }
 
@@ -164,11 +175,14 @@ function updateBullets() {
         let b = bullets[i];
         b.x += b.vx; b.y += b.vy; b.life--;
         ctx.save();
-        ctx.shadowBlur = 15; ctx.shadowColor = '#FF69B4';
-        for(let j=0; j<6; j++) {
+        // --- ラメを細かく繊細に ---
+        ctx.shadowBlur = 10; ctx.shadowColor = '#FF69B4';
+        // 粒子の数を6→8に増やし、サイズを小さく(max5→max2.5)
+        for(let j=0; j<8; j++) {
             ctx.fillStyle = j % 2 === 0 ? '#FF69B4' : '#FFFFFF';
             ctx.beginPath(); 
-            ctx.arc(b.x + (Math.random()-0.5)*40, b.y + (Math.random()-0.5)*40, Math.random()*5, 0, Math.PI*2); 
+            // 拡散範囲も少し狭めて密度を上げる
+            ctx.arc(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30, Math.random()*2.5 + 0.5, 0, Math.PI*2); 
             ctx.fill();
         }
         ctx.restore();
